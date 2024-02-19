@@ -60,8 +60,8 @@
         Me.Button8 = Me.Factory.CreateRibbonButton
         Me.Button9 = Me.Factory.CreateRibbonButton
         Me.Group2 = Me.Factory.CreateRibbonGroup
-        Me.Button7 = Me.Factory.CreateRibbonButton
         Me.searchStd = Me.Factory.CreateRibbonButton
+        Me.Button7 = Me.Factory.CreateRibbonButton
         Me.Tab1.SuspendLayout()
         Me.Group1.SuspendLayout()
         Me.Group3.SuspendLayout()
@@ -215,13 +215,6 @@
         Me.Group2.Items.Add(Me.Button7)
         Me.Group2.Name = "Group2"
         '
-        'Button7
-        '
-        Me.Button7.Image = CType(resources.GetObject("Button7.Image"), System.Drawing.Image)
-        Me.Button7.Label = "关于"
-        Me.Button7.Name = "Button7"
-        Me.Button7.ShowImage = True
-        '
         'searchStd
         '
         Me.searchStd.Image = CType(resources.GetObject("searchStd.Image"), System.Drawing.Image)
@@ -229,6 +222,13 @@
         Me.searchStd.Name = "searchStd"
         Me.searchStd.ShowImage = True
         Me.searchStd.SuperTip = "查询国内外标准状态"
+        '
+        'Button7
+        '
+        Me.Button7.Image = CType(resources.GetObject("Button7.Image"), System.Drawing.Image)
+        Me.Button7.Label = "关于"
+        Me.Button7.Name = "Button7"
+        Me.Button7.ShowImage = True
         '
         'Ribbon1
         '

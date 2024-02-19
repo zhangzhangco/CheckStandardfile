@@ -9,10 +9,14 @@ Imports Microsoft.Office.Tools.Ribbon
 Imports System.Threading.Tasks
 Imports Application = Microsoft.Office.Interop.Word.Application
 Imports System.Net
-Imports System.Text.Json
+Imports System.Security.Cryptography.X509Certificates
+Imports Newtonsoft.Json.Linq
+Imports System.Net.Security
 
 Public Class Ribbon1
     Private currentDoc As Word.Document
+    ' 使用静态HttpClient实例以提高效率和资源复用
+    Public Shared ReadOnly HttpClientInstance As New HttpClient()
 
     Private Sub Ribbon1_Load(ByVal sender As System.Object, ByVal e As RibbonUIEventArgs) Handles MyBase.Load
 
@@ -1727,86 +1731,7 @@ NextParagraphDangling:
     End Function
 
     Private Sub searchStd_Click(sender As Object, e As RibbonControlEventArgs) Handles searchStd.Click
-        Dim dialog As New Form
-        ' 初始化对话框大小，确保有足够空间布局控件
-        dialog.Size = New Drawing.Size(300, 300)
-
-        Dim radio1 As New System.Windows.Forms.RadioButton
-        radio1.Text = "国内"
-        radio1.Location = New Drawing.Point(10, 20) ' 保持左边距
-        radio1.Height = 50
-        dialog.Controls.Add(radio1)
-
-        Dim radio2 As New System.Windows.Forms.RadioButton
-        radio2.Text = "ISO"
-        radio2.Location = New Drawing.Point(120, 20) ' 保持适当间距，确保水平并排
-        radio2.Height = 50
-        dialog.Controls.Add(radio2)
-
-        Dim label As New System.Windows.Forms.Label
-        label.Text = "请输入标准编号"
-        label.Location = New Drawing.Point(10, 70) ' 在单选按钮下方留出适当间距
-        label.AutoSize = True
-        dialog.Controls.Add(label)
-
-        Dim textBox As New System.Windows.Forms.TextBox
-        textBox.Location = New Drawing.Point(10, 110) ' 在标签下方留出适当间距
-        textBox.Width = 250 ' 调整宽度以适应对话框宽度
-        dialog.Controls.Add(textBox)
-
-        Dim okButton As New System.Windows.Forms.Button
-        okButton.Text = "确定"
-        okButton.Height = 45
-        okButton.Location = New Drawing.Point(20, 160) ' 在文本框下方留出适当间距
-        AddHandler okButton.Click, Sub() MessageBox.Show("Search Function Placeholder")
-        dialog.Controls.Add(okButton)
-
-        Dim cancelButton As New System.Windows.Forms.Button
-        cancelButton.Text = "取消"
-        cancelButton.Height = 45
-        cancelButton.Location = New Drawing.Point(170, 160) ' 确保与确定按钮水平排列，且间距一致
-        AddHandler cancelButton.Click, Sub() dialog.Close()
-        dialog.Controls.Add(cancelButton)
-
+        Dim dialog As New BibsearchDialog()
         dialog.ShowDialog()
     End Sub
-
-
-    Private Function Search(ByVal text As String) As String
-        Dim std As StandardFileName = New StandardFileName(text)
-
-
-
-        ' 在这里实现你的搜索逻辑
-        Return "Search result for " & text
-    End Function
-
-    Public Function ScrapePage(text As String) As List
-        Try
-            Dim uri As New Uri("http://hbba.sacinfo.org.cn/stdQueryList")
-            Dim data As New Dictionary(Of String, String) From {{"key", text}}
-            Dim wc As New WebClient()
-            wc.Headers(HttpRequestHeader.ContentType) = "application/x-www-form-urlencoded"
-            Dim resp As String = wc.UploadString(uri, ToUrlEncodedString(data))
-            Dim json As Dictionary(Of String, Object) = JsonSerializer.Deserialize(Of Dictionary(Of String, Object))(resp)
-            Dim records As List(Of Dictionary(Of String, Object)) = CType(json("records"), List(Of Dictionary(Of String, Object)))
-            Dim hits As New List(Of Hit)
-            For Each h As Dictionary(Of String, Object) In records
-                hits.Add(New Hit With {.Pid = h("pk").ToString(), .Docref = h("code").ToString(), .Status = h("status").ToString()})
-            Next
-            Return New HitCollection(hits)
-        Catch ex As Exception
-            Throw New Exception("Cannot access " & uri.ToString())
-        End Try
-    End Function
-    Private Function ToUrlEncodedString(data As Dictionary(Of String, String)) As String
-        Dim sb As New StringBuilder()
-
-        For Each kvp As KeyValuePair(Of String, String) In data
-            If sb.Length > 0 Then sb.Append("&")
-            sb.AppendFormat("{0}={1}", WebUtility.UrlEncode(kvp.Key), WebUtility.UrlEncode(kvp.Value))
-        Next
-
-        Return sb.ToString()
-    End Function
 End Class
