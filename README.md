@@ -2,6 +2,8 @@
 
 欢迎使用**StandardAI CheckMate**，一款专为标准文件形式检查设计的VSTO Add-in工具。无论你是科研工作者、技术文档编写者还是任何需要遵循标准文件格式的专业人士，**StandardAI CheckMate**旨在提升你的工作效率，确保你的文件严格遵循GB/T 1.1-2020等标准，展现出高度的专业性和严谨性。
 
+![image](https://github.com/zhangzhangco/CheckStandardfile/assets/5515762/fbd1970b-f842-40f9-988b-dd57fccb9689)
+
 ## 特色功能
 
 - **全面检查**：从文档结构到内容细节，全方位检查，确保符合标准。
@@ -51,3 +53,4 @@ A: 访问GitHub项目页面下载最新版本的安装包，重复安装指南�
 ---
 
 感谢选择**StandardAI CheckMate**，让我们共同提升专业文件的标准化水平，展现专业的力量。
+![image](https://github.com/zhangzhangco/CheckStandardfile/assets/5515762/8ae665a1-026c-4b06-87cc-9e4fd5a9d67e)
