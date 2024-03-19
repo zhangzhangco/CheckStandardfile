@@ -12,44 +12,62 @@ Imports System.Net
 Imports System.Security.Cryptography.X509Certificates
 Imports Newtonsoft.Json.Linq
 Imports System.Net.Security
+Imports Microsoft.Office
+Imports System.Diagnostics.Eventing.Reader
+Imports System.IO
+Imports System.Security.Cryptography
+Imports Microsoft.Office.Core
+Imports Newtonsoft.Json
+Imports System.Windows.Input
 
 Public Class Ribbon1
     Private currentDoc As Word.Document
     ' 使用静态HttpClient实例以提高效率和资源复用
     Public Shared ReadOnly HttpClientInstance As New HttpClient()
+    ' 获取当前Word应用程序和活动文档的引用
+    Dim wordApp As Microsoft.Office.Interop.Word.Application ' = Globals.ThisAddIn.Application
+    ' 创建ProgressHandler实例，用于管理进度条
+    Dim progressHandler As New ProgressHandler()
+    Public Property originalDocPath As String
+    Public Property tempPathOriginal As String
+    Public Property tempPathModified As String
+    Public Property LicenseKey As String
+    Public Property Llm As String
+    Public Property LlmKey As String
+    Public Property IsVip As Boolean = False
 
     Private Sub Ribbon1_Load(ByVal sender As System.Object, ByVal e As RibbonUIEventArgs) Handles MyBase.Load
-
+        wordApp = Globals.ThisAddIn.Application
+        LoadSettings()
     End Sub
 
-    Private Sub Button7_Click(sender As Object, e As RibbonControlEventArgs) Handles Button7.Click
-        Dim aboutMessage As String = "形式审查助手" & Environment.NewLine
-        aboutMessage &= "版本: 0.1.0" & Environment.NewLine
-        aboutMessage &= "张鑫 WeChat：zhangxin_john" & Environment.NewLine
-        aboutMessage &= "用于辅助进行标准形式审查和编制的小工具。"
+    Private Sub About_Click(sender As Object, e As RibbonControlEventArgs) Handles AboutBtn.Click
+        Dim aboutMessage As String = "形式检查助手" & Environment.NewLine
+        aboutMessage &= "版本: 0.1.1" & Environment.NewLine
+        aboutMessage &= "WeChat：HelloLLM2035" & Environment.NewLine
+        aboutMessage &= "用于辅助进行标准形式检查和编制的小工具。"
 
         MessageBox.Show(aboutMessage, "关于", MessageBoxButtons.OK, MessageBoxIcon.Information)
     End Sub
-    Private Function activedoc()
-        If Globals.ThisAddIn.Application.Documents.Count > 0 Then
-            currentDoc = Globals.ThisAddIn.Application.ActiveDocument
-        Else
-            MsgBox("没有打开的文件")
-            Return False
-        End If
-        Return True
-    End Function
-    Private Sub Button1_Click(sender As Object, e As RibbonControlEventArgs) Handles Button1.Click
-        Dim para As Word.Paragraph
+
+    Private Sub StructureChk_Click(sender As Object, e As RibbonControlEventArgs) Handles StructureChkBtn.Click
+        Dim para As Paragraph
         Dim nextPara As Word.Paragraph
         Dim currentLevel As Integer
         Dim nextLevel As Integer
         Dim subLevelPara As Word.Paragraph
 
-        If Not activedoc() Then Exit Sub
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         ' 开启当前文档的修订模式
-        currentDoc.TrackRevisions = True
+        'DecryptDoc(currentDoc)
+        'currentDoc.TrackRevisions = True
 
+        progressHandler.ProgressStartWaiting()
         For Each para In currentDoc.Paragraphs
             If IsSkippedParagraph(para) Then Continue For
 
@@ -87,6 +105,7 @@ Public Class Ribbon1
                 End If
             End If
         Next para
+        progressHandler.ProgressEnd()
     End Sub
 
     Function IsSkippedParagraph(ByVal para As Word.Paragraph) As Boolean
@@ -173,10 +192,20 @@ Public Class Ribbon1
         IsSubLevel = (GetLevel(para.Style.NameLocal) = currentLevel + 1)
     End Function
 
-    Private Sub Button2_Click(sender As Object, e As RibbonControlEventArgs) Handles Button2.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub BibValid_Click(sender As Object, e As RibbonControlEventArgs) Handles BibValidBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         ' 开启当前文档的修订模式
-        currentDoc.TrackRevisions = True
+        'If (sender Is Nothing) Then
+        '    currentDoc.TrackRevisions = False
+        'Else
+        '    DecryptDoc(currentDoc)
+        '    currentDoc.TrackRevisions = True
+        'End If
 
         Dim para As Word.Paragraph
         Dim fileNames As New Collection
@@ -189,6 +218,7 @@ Public Class Ribbon1
         Dim fullwidthSpace As String
         fullwidthSpace = ChrW(&H3000)
 
+        progressHandler.ProgressStartWaiting()
         ' 遍历所有段落寻找目标章节
         For Each para In currentDoc.Paragraphs
             If para.Style.NameLocal = "标准文件_章标题" Then
@@ -207,7 +237,7 @@ Public Class Ribbon1
                         skipFirstParagraph = False
                     Else
                         ' 收集文件名
-                        fileNames.Add(FormatFileName(para.Range.Text))
+                        fileNames.Add(StandardDocument.FormatedFileName(para.Range.Text))
                         ' 删除文件名段落
                         para.Range.Delete()
                     End If
@@ -259,79 +289,62 @@ Public Class Ribbon1
             For j = 0 To UBound(arrFileNames)
                 ' 检查文本是否为空再插入
                 If Trim(arrFileNames(j)) <> "" AndAlso insertPoint IsNot Nothing Then
-                    insertPoint.Text = arrFileNames(j)
-                    '拆解文件名，得到标准编号，年份和标准名称
-                    insertPoint.Style = "标准文件_段"
-                    insertPoint = currentDoc.Range(insertPoint.End, insertPoint.End)
+                    Dim stdfilename = arrFileNames(j)
+                    '尊享模式才有
+                    If (sender Is Nothing) Then
+                        '构建类，拆解文件名，得到标准编号和标准名称
+                        Dim stddoc = New StandardDocument(stdfilename)
+                        Dim output As String
+                        '验证标准引用的有效性，已废止做批注，已更新替换标准名
+                        If stddoc.isDomestic Then
+                            output = SearchCnGovStd(stddoc.Code, HttpClientInstance)
+                        Else
+                            '仅对支持的三大国际标准进行查询
+                            If String.IsNullOrEmpty(stddoc.Code) Then
+                                output = String.Empty
+                            Else
+                                output = SearchInterStd(stddoc.Code, HttpClientInstance, LicenseKey)
+                            End If
+                        End If
+                        '查到了就添加回车
+                        If Not String.IsNullOrEmpty(output) Then
+                            stdfilename = output & vbCrLf
+                        End If
+
+                        insertPoint.Text = stdfilename
+                        insertPoint.Style = "标准文件_段"
+                        '属于三大标准，但没有查到
+                        If Not String.IsNullOrEmpty(stddoc.Code) AndAlso String.IsNullOrEmpty(output) Then
+                            currentDoc.Comments().Add(insertPoint, $"{stddoc.Code} 不存在或者已废止。")
+                        End If
+
+                        insertPoint = currentDoc.Range(insertPoint.End, insertPoint.End)
+                    Else
+                        insertPoint.Text = stdfilename
+                        insertPoint.Style = "标准文件_段"
+                        insertPoint = currentDoc.Range(insertPoint.End, insertPoint.End)
+                    End If
                 End If
             Next j
         Else
-            MsgBox("未找到'规范性引用文件'章节")
+            If Not sender Is Nothing Then
+                MsgBox("未找到'规范性引用文件'章节")
+            End If
+            '批注缺少章节
+            missingBib(currentDoc)
         End If
+        progressHandler.ProgressEnd()
     End Sub
-    '返回：
-    '4位年份 — 代表查到的现行年份；
-    '-1      — 代表没查到
-
-    Public Async Function QueryStandardAsync(ByVal standardCode As String) As Task(Of String)
-        Using client As New HttpClient()
-            ' 替换为目标URL
-            Dim url As String = "http://zxd.sacinfo.org.cn/default/com.sac.tpms.core.search.countryStdSearch.flow"
-
-            ' 构建POST请求的内容
-            Dim content As New FormUrlEncodedContent(New Dictionary(Of String, String) From {
-                {"_eosFlowAction", "query"},
-                {"criteria/_expr[1]/stdCode", standardCode},
-                {"criteria/_expr[1]/_op", "like"}  ' 根据需要添加其他参数
-            })
-
-            ' 发送POST请求
-            Dim response As HttpResponseMessage = Await client.PostAsync(url, content)
-
-            ' 确保HTTP成功状态值
-            response.EnsureSuccessStatusCode()
-
-            ' 读取并返回响应内容
-            Dim responseBody As String = Await response.Content.ReadAsStringAsync()
-            Return responseBody
-        End Using
-    End Function
-    Function FormatFileName(ByVal fileName As String) As String
-        Dim formattedFileName As String
-        formattedFileName = fileName
-
-        ' 存储所有有效的文件名前缀
-        Dim validPrefixes As String() = {"GB", "AQ", "BB", "CB", "CH", "CJ", "CY", "DA", "DB", "DL", "DY", "DZ", "EJ", "FZ", "GA", "GC", "GD", "GH", "GM", "GY", "HB", "HG", "HJ", "HS", "HY", "JB", "JC", "JG", "JR", "JT", "JY", "LB", "LD", "LS", "LY", "MH", "MT", "MZ", "NB", "NY", "QB", "QC", "QJ", "QX", "RB", "SB", "SC", "SF", "SH", "SJ", "SL", "SN", "SW", "SY", "TB", "TD", "TY", "WB", "WH", "WJ", "WM", "WS", "WW", "XB", "XF", "YB", "YC", "YD", "YJ", "YS", "YY", "YZ", "ZY", "GSB"}
-
-        ' 检查文件名是否以任一有效前缀开头
-        If IsPrefixValid(formattedFileName, validPrefixes) Then
-            ' 替换特殊字符
-            Dim yearPattern As String
-            yearPattern = "(\d{4})" ' 匹配4位数字年份
-
-            ' 替换"-"+年份为"—"+年份
-            formattedFileName = formattedFileName.Replace("-", "—")
-
-            ' 使用正则表达式替换年份后面的空格为全角空格
-            Dim regEx As New System.Text.RegularExpressions.Regex(yearPattern & "\s+")
-            formattedFileName = regEx.Replace(formattedFileName, "$1　")
-        End If
-
-        ' 当文件名中的两个中文字中间有“ ”时候，将“ ”替换为fullwidthSpace
-        formattedFileName = ReplaceColonBetweenChinese(formattedFileName)
-
-        Return formattedFileName
-    End Function
-
-    Function IsPrefixValid(ByVal fileName As String, ByVal prefixes As String()) As Boolean
-        For Each prefix As String In prefixes
-            If fileName.StartsWith(prefix) Then
-                Return True
+    Private Sub missingBib(doc As Document)
+        ' 遍历文档中的每个段落
+        For Each para As Word.Paragraph In doc.Paragraphs
+            ' 检查段落的样式名称和内容
+            If para.Style.NameLocal = "标准文件_章标题" AndAlso para.Range.Text.Contains("范围") Then
+                ' 在满足条件的段落中添加批注
+                para.Range.Comments.Add(para.Range, "此章后必须有‘规范性引用文件’一章")
             End If
         Next
-        Return False
-    End Function
-
+    End Sub
     Function IsInCustomOrder(ByVal str1 As String, ByVal str2 As String) As Boolean
         ' 自定义排序规则
         Dim sortOrder As String() = {"GB", "AQ", "BB", "CB", "CH", "CJ", "CY", "DA", "DB", "DL", "DY", "DZ", "EJ", "FZ", "GA", "GC", "GD", "GH", "GM", "GY", "HB", "HG", "HJ", "HS", "HY", "JB", "JC", "JG", "JR", "JT", "JY", "LB", "LD", "LS", "LY", "MH", "MT", "MZ", "NB", "NY", "QB", "QC", "QJ", "QX", "RB", "SB", "SC", "SF", "SH", "SJ", "SL", "SN", "SW", "SY", "TB", "TD", "TY", "WB", "WH", "WJ", "WM", "WS", "WW", "XB", "XF", "YB", "YC", "YD", "YJ", "YS", "YY", "YZ", "ZY", "GSB", "ISO", "IEC", "ITU", "CIE", "SMPTE", "其他"}
@@ -351,27 +364,21 @@ Public Class Ribbon1
         Return order.Length - 1 ' 如果没有匹配项，返回最后一个索引
     End Function
 
-    Function ReplaceColonBetweenChinese(ByVal inputString As String) As String
-        ' 正则表达式模式，用于匹配两个中文字之间的空格
-        Dim regexPattern As String = "([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])"
-
-        ' 创建正则表达式对象
-        Dim regEx As New System.Text.RegularExpressions.Regex(regexPattern)
-
-        ' 执行正则表达式替换
-        Return regEx.Replace(inputString, "$1　$2")
-    End Function
-
-    Private Sub Button3_Click(sender As Object, e As RibbonControlEventArgs) Handles Button3.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub TermsChk_Click(sender As Object, e As RibbonControlEventArgs) Handles TermsChkBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         Dim para As Word.Paragraph
 
         ' 开启当前文档的修订模式
         currentDoc.TrackRevisions = False
 
+        progressHandler.ProgressStartWaiting()
         '将术语内错误地被标记为一级条标题的段落变为术语条一
         UpdateParagraphStylesInDocument()
-
         ' 遍历每个段落
         For Each para In currentDoc.Paragraphs
             ' 检查段落是否是“标准文件_章标题”样式，且文本为“术语和定义”
@@ -397,11 +404,11 @@ Public Class Ribbon1
                                 paraEndRange.Style = currentDoc.Styles("标准文件_术语条一")
                             End If
                         End If
-                        ConvertParagraphToLower(para)
-                        replacewithquanjiao(para)
+                        '第一个空格全角，后面的英文小写
+                        ReplaceWithQuanjiaoAndConditionallyLowercase(para)
                         Dim tt = GetLeadingText(para)
                         If Not IsStringPresentTimes(tt, 2) Then
-                            currentDoc.Comments.Add(para.Range, tt & "在文中出现少于两次，应从本章中移除。")
+                            currentDoc.Comments.Add(para.Range, "'" & tt & "'在文中出现少于两次，应从本章中移除。")
                         End If
                     End If
                     ' 移至下一个段落
@@ -409,6 +416,7 @@ Public Class Ribbon1
                 End While
             End If
         Next para
+        progressHandler.ProgressEnd()
     End Sub
 
     Private Function IsStringPresentTimes(ByVal searchString As String, ByVal times As Integer) As Boolean
@@ -456,49 +464,49 @@ Public Class Ribbon1
             Return String.Empty ' 如果没有匹配到，则返回空字符串
         End If
     End Function
-    Private Sub replacewithquanjiao(para As Word.Paragraph)
+    Private Sub ReplaceWithQuanjiaoAndConditionallyLowercase(para As Word.Paragraph)
         If para Is Nothing Then Exit Sub
         If Not String.IsNullOrWhiteSpace(para.Range.Text.Trim) Then
-            ' 获取段落范围，但不包括段落末尾的特殊字符
             Dim range As Word.Range = para.Range
-            range.SetRange(Start:=para.Range.Start, End:=para.Range.End)
+            range.SetRange(Start:=para.Range.Start, End:=para.Range.End - 1) ' 避开段落末尾的特殊字符
 
-            ' 创建正则表达式对象
-            Dim pattern As String = "^(.*?)[ ]+"
-            Dim replacement As String = "$1　" ' 这里的全角空格在两个引号之间
-            Dim regex As New Regex(pattern)
+            ' 统一处理全角空格和半角空格，将全角空格替换为半角空格
+            Dim text As String = vbVerticalTab & range.Text.Replace("　", " ").TrimStart(vbVerticalTab, " ") ' 全角空格替换为半角空格
 
-            If Not range.Text.Contains("　") Then
-                ' 正则表达式替换文本
-                regex.Replace(range.Text, replacement, 1)
+            ' 分割段落文本为两部分：第一个空格前的文本和第一个空格后的文本
+            Dim parts() As String = Split(text, " ", 2)
+            If parts.Length > 1 Then
+                Dim firstPart As String = parts(0) ' 可能包含缩略语的部分
+                Dim secondPart As String = parts(1) ' 第一个空格后的部分，可能包含英文单词
+
+                ' 从第一部分中提取所有大写英文字符串
+                Dim regex As New Regex("[A-Z]+")
+                Dim uppercaseWord As String = ""
+                Dim match As Match = regex.Match(firstPart)
+                If match.Success Then
+                    uppercaseWord = match.Value ' 提取到的大写英文字符串
+                End If
+
+                ' 对第二部分的英文单词进行处理，保留特定的大写英文字符串
+                Dim secondPartProcessed As String = Regex.Replace(secondPart, "\b[A-Za-z]+\b", Function(m)
+                                                                                                   If m.Value.ToUpper() = uppercaseWord Then
+                                                                                                       Return uppercaseWord ' 保持特定的大写字符串
+                                                                                                   Else
+                                                                                                       Return m.Value.ToLower() ' 其他转换为小写
+                                                                                                   End If
+                                                                                               End Function)
+
+                ' 重组段落文本
+                range.Text = firstPart & "　" & secondPartProcessed
             End If
-            ' 应用样式和格式设置到当前段落
+
+            ' 应用样式和格式
             range.Style = "标准文件_术语条一"
             range.Font.Name = "黑体"
             range.ParagraphFormat.LeftIndent = 24
             range.ParagraphFormat.CharacterUnitFirstLineIndent = -2
-
-            ' 注意：这种方法假设段落末尾有且仅有一个特殊字符（如 vbCr）。
-            ' 如果段落结尾的处理更复杂，这种方法可能需要调整。
         End If
     End Sub
-    Private Sub ConvertParagraphToLower(para As Word.Paragraph)
-        If para Is Nothing Then Exit Sub
-        If Not String.IsNullOrWhiteSpace(para.Range.Text.Trim) Then
-            ' 获取段落范围，但不包括段落末尾的特殊字符
-            Dim range As Word.Range = para.Range
-            range.SetRange(Start:=para.Range.Start, End:=para.Range.End - 1)
-
-            ' 将范围内的文本转换为小写
-            Dim lowerCaseText As String = range.Text.ToLower()
-            range.Text = lowerCaseText
-
-            ' 注意：这种方法假设段落末尾有且仅有一个特殊字符（如 vbCr）。
-            ' 如果段落结尾的处理更复杂，这种方法可能需要调整。
-        End If
-    End Sub
-
-
 
     Private Sub UpdateParagraphStylesInDocument()
         Dim para As Word.Paragraph
@@ -530,20 +538,28 @@ Public Class Ribbon1
         Next para
     End Sub
 
-    Private Sub Button4_Click(sender As Object, e As RibbonControlEventArgs) Handles Button4.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub BibRefChk_Click(sender As Object, e As RibbonControlEventArgs) Handles BibRefChkBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         Dim reftext As String
 
         ' 开启当前文档的修订模式
-        currentDoc.TrackRevisions = True
+        'DecryptDoc(currentDoc)
+        'currentDoc.TrackRevisions = True
 
         Dim regEx As Regex
         regEx = New Regex("(([A-Z]{2,})([_/])([A-Z])\s([0-9]{1,5}(?:\.[0-9]{1,3})?)([-—])([0-9]{4}))|(([A-Z]{2.})\s([0-9]+)(?:([-])?([0-9]))(:[0-9]{4})?)")
 
         reftext = extracteChapterText("规范性引用文件") & extracteChapterText("参考文献")
 
+        progressHandler.ProgressStartWaiting()
         ProcessParagraphs(currentDoc, regEx, reftext)
         ProcessTables(currentDoc, regEx, reftext)
+        progressHandler.ProgressEnd()
     End Sub
 
     Function extracteChapterText(chapterTitle As String) As String
@@ -557,7 +573,7 @@ Public Class Ribbon1
         isInChapter = False
 
         ' 设置文档对象
-        doc = Globals.ThisAddIn.Application.ActiveDocument
+        doc = currentDoc
 
         ' 遍历文档中的每个段落
         For Each para In doc.Paragraphs
@@ -661,13 +677,19 @@ NextParagraphDangling:
         Return isPrefixValid
     End Function
 
-    Private Sub Button5_Click(sender As Object, e As RibbonControlEventArgs) Handles Button5.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub BignumMdf_Click(sender As Object, e As RibbonControlEventArgs) Handles BignumMdfBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
+        DecryptDoc(currentDoc)
         currentDoc.TrackRevisions = True ' 开启修订模式
 
         Dim regEx As Regex
-        regEx = New Regex("\b(?<![a-zA-Z\d .:/\-—])\d{5,}(?:\.\d+)?\b(?![\-/])", RegexOptions.IgnoreCase)
-
+        regEx = New Regex("\b(?<![a-zA-Z\d .:/\-—""]) \ d{5,}(?:\.\d+)?\b(?![\-/])", RegexOptions.IgnoreCase)
+        progressHandler.ProgressStartWaiting()
         Dim paragraphs As Word.Paragraphs = currentDoc.Paragraphs
         For Each para As Word.Paragraph In paragraphs
             Dim range As Word.Range = para.Range
@@ -684,6 +706,7 @@ NextParagraphDangling:
                 range.SetRange(para.Range.Start, para.Range.End)
             Next
         Next
+        progressHandler.ProgressEnd()
     End Sub
 
 
@@ -698,22 +721,28 @@ NextParagraphDangling:
         Return integerPart + decimalPart
     End Function
 
-    Private Sub Button6_Click(sender As Object, e As RibbonControlEventArgs) Handles Button6.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub UnitMdf_Click(sender As Object, e As RibbonControlEventArgs) Handles UnitMdfBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         ' 开启当前文档的修订模式
+        DecryptDoc(currentDoc)
         currentDoc.TrackRevisions = True
         ' 保存当前的修订视图状态
-        Dim originalShowRevisions As Boolean = Globals.ThisAddIn.Application.ActiveWindow.View.ShowRevisionsAndComments
+        Dim originalShowRevisions As Boolean = wordApp.ActiveWindow.View.ShowRevisionsAndComments
 
         ' 设置为最终状态视图，以隐藏修订内容
-        Globals.ThisAddIn.Application.ActiveWindow.View.ShowRevisionsAndComments = False
+        wordApp.ActiveWindow.View.ShowRevisionsAndComments = False
 
         Dim unitPairs As String
-        unitPairs = "米|m|千克|kg|秒|s|安培|A|摩尔|mol|坎德拉|cd|" &
+        unitPairs = "米|m|千克|kg|秒|s|安培|A|毫安|mA|摩尔|mol|坎德拉|cd|" &
                     "牛顿|N|焦耳|J|瓦特|W|帕斯卡|Pa|伏特|V|欧姆|Ω|库仑|C|" &
                     "法拉|F|特斯拉|T|亨利|H|赫兹|Hz|勒克斯|lx|摄氏度|℃|升|l|" &
                     "克|g|毫米|mm|厘米|cm|千米|km|毫克|mg|微克|μg|吨|t|" &
-                    "毫秒|ms|微秒|μs|纳秒|ns|分钟|min|小时|h|天|d|年|yr|" &
+                    "毫秒|ms|微秒|μs|纳秒|ns|分钟|min|小时|h|" &
                     "华氏度|℉|巴|bar|毫米汞柱|mmHg|大气压|atm|酸碱度|pH|" &
                     "分贝|dB|弧度|rad|立体弧度|sr|流明|lm|坎德拉每平方米|cd/m2|" &
                     "电子伏特|eV|卡路里|cal|千卡路里|kcal|瓦特小时|Wh|千瓦时|kWh|" &
@@ -734,6 +763,7 @@ NextParagraphDangling:
                                 {"千克", "kg"},
                                 {"秒", "s"},
                                 {"安培", "A"},
+                                {"毫安", "mA"},
                                 {"摩尔", "mol"},
                                 {"坎德拉", "cd"},
                                 {"牛顿", "N"},
@@ -762,8 +792,6 @@ NextParagraphDangling:
                                 {"纳秒", "ns"},
                                 {"分钟", "min"},
                                 {"小时", "h"},
-                                {"天", "d"},
-                                {"年", "yr"},
                                 {"华氏度", "℉"},
                                 {"巴", "bar"},
                                 {"毫米汞柱", "mmHg"},
@@ -833,7 +861,15 @@ NextParagraphDangling:
                             }
 
         Dim regEx As Regex
-        regEx = New Regex("([-+]?\d*\.?\d+\/?\d*)\s?(" & unitPairs & ")", RegexOptions.IgnoreCase)
+        'regEx = New Regex("([-+]?\d*\.?\d+\/?\d*)\s?(" & unitPairs & ")")
+        regEx = New Regex("(?<![A-Za-z:_.])([-+]?\d*\.?\d+\/?\d*)\s?(" & unitPairs & ")(?![A-Za-z1-9_.:+-])")
+        progressHandler.ProgressStartWaiting()
+
+        ' 替换㎡为m²
+        ReplaceTextWithSuperscript(currentDoc, "㎡", "m", "2")
+
+        ' 替换m³为m³
+        ReplaceTextWithSuperscript(currentDoc, "m³", "m", "3")
 
         ' 遍历文档中的每个段落
         For Each para As Word.Paragraph In currentDoc.Paragraphs
@@ -860,8 +896,8 @@ NextParagraphDangling:
                 End If
 
                 ' 生成新文本
-                newText = match.Groups(1).Value & " " & unit
-                If unit = "℃" Or unit = "℉" Or unit = "°" Then
+                newText = match.Groups(1).Value & ChrW(&H2005) & unit
+                If unit = "°" Then 'unit = "℃" Or unit = "℉" Or 
                     newText = match.Groups(1).Value & unit
                 End If
 
@@ -871,34 +907,69 @@ NextParagraphDangling:
                 End If
             Next
         Next
+        progressHandler.ProgressEnd()
 
         ' 恢复原始的修订视图状态
-        Globals.ThisAddIn.Application.ActiveWindow.View.ShowRevisionsAndComments = originalShowRevisions
+        wordApp.ActiveWindow.View.ShowRevisionsAndComments = originalShowRevisions
     End Sub
 
-    Private Sub Button8_Click(sender As Object, e As RibbonControlEventArgs) Handles Button8.Click
-        RenewAllTableFormats()
+    Private Sub ReplaceTextWithSuperscript(doc As Word.Document, searchText As String, baseText As String, superText As String)
+        Dim rng As Word.Range = doc.Content
+
+        rng.Find.ClearFormatting()
+        rng.Find.Text = searchText
+        rng.Find.Replacement.ClearFormatting()
+
+        While rng.Find.Execute(FindText:=searchText, ReplaceWith:="", Replace:=Word.WdReplace.wdReplaceNone)
+            rng.Text = baseText
+            rng.Font.Superscript = 0 ' 先清除可能存在的上标格式
+            rng.Collapse(Word.WdCollapseDirection.wdCollapseEnd)
+
+            ' 插入上标文本
+            Dim superRng As Word.Range = doc.Range(rng.Start, rng.Start)
+            superRng.Text = superText
+            superRng.Font.Superscript = 1
+
+            rng.Start = superRng.End
+            rng.End = doc.Content.End
+        End While
     End Sub
-    Private Sub RenewAllTableFormats()
-        If Not activedoc() Then Exit Sub
+
+    Private Sub BeautifyTbl_Click(sender As Object, e As RibbonControlEventArgs) Handles BeautifyTblBtn.Click
+        progressHandler.ProgressStart()
+        RenewAllTableFormats(sender)
+        progressHandler.ProgressEnd()
+    End Sub
+    Private Sub RenewAllTableFormats(sender As Object)
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         Dim tableCount As Integer = currentDoc.Tables.Count
 
-        If tableCount = 0 Then
+        If Not sender Is Nothing AndAlso tableCount = 0 Then
             MessageBox.Show("文档中没有表格。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         End If
 
         For i As Integer = 1 To tableCount
             Dim table As Object = currentDoc.Tables(i)
-
+            Dim percent As Integer = CInt((i / tableCount) * 100)
+            progressHandler.UpdateProgress(percent, "处理第" & i & "个表格。")
             ' 检查表格是否有框线并且行和列都大于2
             If TableHasBorders(table) AndAlso table.Rows.Count > 2 AndAlso table.Columns.Count > 2 Then
-                ResetTable(table)
-                SetTableFormat(table)
+                Try
+                    ResetTable(table)
+                    SetTableFormat(table)
+                Catch
+                End Try
             End If
         Next
-
-        MessageBox.Show("所有表格格式已更新。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        If Not sender Is Nothing Then
+            MessageBox.Show("所有表格格式已更新。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        End If
     End Sub
     Private Function TableHasBorders(ByVal table As Object) As Boolean
         Dim borderTypes As WdBorderType() = {WdBorderType.wdBorderLeft, WdBorderType.wdBorderRight, WdBorderType.wdBorderTop, WdBorderType.wdBorderBottom}
@@ -949,7 +1020,7 @@ NextParagraphDangling:
         Next
 
         table.Rows(1).Select()
-        Globals.ThisAddIn.Application.Selection.Cells.Borders(WdBorderType.wdBorderBottom).LineWidth = WdLineWidth.wdLineWidth100pt
+        wordApp.Selection.Cells.Borders(WdBorderType.wdBorderBottom).LineWidth = WdLineWidth.wdLineWidth100pt
 
         For Each paragraph As Paragraph In table.Range.Paragraphs
             Dim text As String = CType(paragraph.Style, Object).NameLocal
@@ -968,11 +1039,18 @@ NextParagraphDangling:
         table.Range.Cells.VerticalAlignment = WdCellVerticalAlignment.wdCellAlignVerticalCenter
     End Sub
 
-    Private Sub Button10_Click(sender As Object, e As RibbonControlEventArgs) Handles Button10.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub MergeTbl_Click(sender As Object, e As RibbonControlEventArgs) Handles MergeTblBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         ' 开启当前文档的修订模式
         currentDoc.TrackRevisions = False
+        progressHandler.ProgressStartWaiting()
         SearchAndExecuteUnsplit()
+        progressHandler.ProgressEnd()
     End Sub
     Private Sub SearchAndExecuteUnsplit()
         Dim searchText As String = "（续）" ' 要搜索的特定文字
@@ -1000,62 +1078,89 @@ NextParagraphDangling:
             End If
 
             ' 将光标移到文档开头
-            Globals.ThisAddIn.Application.Selection.HomeKey(Word.WdUnits.wdStory)
+            wordApp.Selection.HomeKey(Word.WdUnits.wdStory)
         End While
     End Sub
 
     Private Sub unsplittab(para As Word.Paragraph)
         ' 将光标移到段落的第一行
         para.Range.Select()
-        Globals.ThisAddIn.Application.Selection.HomeKey(Word.WdUnits.wdLine)
-
+        wordApp.Selection.HomeKey(Word.WdUnits.wdLine)
         ' 扩展选定区域到段落的最后一行
-        Globals.ThisAddIn.Application.Selection.MoveEnd(Word.WdUnits.wdLine, Word.WdMovementType.wdExtend + 1)
+        wordApp.Selection.MoveEnd(Word.WdUnits.wdLine, Word.WdMovementType.wdExtend + 1)
 
         ' 删除选定区域
-        Globals.ThisAddIn.Application.Selection.Delete()
+        wordApp.Selection.Delete()
 
         ' 检查段落是否包含表格
         If para.Range.Tables.Count > 0 Then
             ' 示例操作：选择整行
             para.Range.Select()
-            Globals.ThisAddIn.Application.Selection.Cells.Borders(Word.WdBorderType.wdBorderTop).LineWidth = Word.WdLineWidth.wdLineWidth025pt
-            ResetTable(para.Range.Tables(1))
-            SetTableFormat(para.Range.Tables(1))
+            wordApp.Selection.Cells.Borders(Word.WdBorderType.wdBorderTop).LineWidth = Word.WdLineWidth.wdLineWidth025pt
+            Try
+                ResetTable(para.Range.Tables(1))
+                SetTableFormat(para.Range.Tables(1))
+            Catch
+            End Try
         End If
     End Sub
 
-    Private Sub Button9_Click(sender As Object, e As RibbonControlEventArgs) Handles Button9.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub SplitTbl_Click(sender As Object, e As RibbonControlEventArgs) Handles SplitTblBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         ' 切换到单页视图
-        Globals.ThisAddIn.Application.ActiveWindow.View.Type = WdViewType.wdPrintView
-        SplitTable()
+        wordApp.ActiveWindow.View.Type = WdViewType.wdPrintView
+        progressHandler.ProgressStartWaiting()
+        SplitTable(sender)
+        progressHandler.ProgressEnd()
     End Sub
     ' 这个子程序用于处理Microsoft Word中跨页的表格拆分
-    Private Sub SplitTable()
+    Private Sub SplitTableBatch(sender As Object)
+        Dim para As Paragraph
+        Dim range As Range
+
+        For Each para In currentDoc.Paragraphs
+            If Not para.Style Is Nothing AndAlso para.Style.NameLocal.Contains("表标题") Then
+                ' 检查当前段落后是否紧跟着一个表格
+                If Not para.Range.Next(WdUnits.wdParagraph).Tables.Count = 0 Then
+                    ' 将光标定位到紧跟着的表格的第一个单元格
+                    range = para.Range.Next(WdUnits.wdParagraph).Tables(1).Cell(1, 1).Range
+                    wordApp.Selection.SetRange(range.Start, range.End)
+                    ' 调用SplitTable2过程
+                    SplitTable(sender)
+                End If
+            End If
+        Next
+    End Sub
+
+    Private Sub SplitTable(sender As Object)
         Try
             ' 循环，直到没有跨页的表格
             Do
                 ' 检查当前选择是否在表格中
-                If Not CType(Globals.ThisAddIn.Application.Selection.Information(Word.WdInformation.wdWithInTable), Boolean) Then
+                If Not sender Is Nothing AndAlso Not CType(wordApp.Selection.Information(Word.WdInformation.wdWithInTable), Boolean) Then
                     MessageBox.Show("请将光标移到待拆分的表格内！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Asterisk)
                     Exit Do
                 End If
 
-                Dim selectedTable As Word.Table = Globals.ThisAddIn.Application.Selection.Tables(1)
-                Dim startPageNumber As Integer = CType(Globals.ThisAddIn.Application.Selection.Information(Word.WdInformation.wdActiveEndPageNumber), Integer)
+                Dim selectedTable As Word.Table = wordApp.Selection.Tables(1)
+                Dim startPageNumber As Integer = CType(wordApp.Selection.Information(Word.WdInformation.wdActiveEndPageNumber), Integer)
                 Dim endPageNumber As Integer = CType(selectedTable.Rows(selectedTable.Rows.Count).Range.Information(Word.WdInformation.wdActiveEndPageNumber), Integer)
 
                 ' 如果选中的表格没有跨页，则退出循环
-                If startPageNumber = endPageNumber Then
+                If Not sender Is Nothing AndAlso startPageNumber = endPageNumber Then
                     MessageBox.Show("所选表格不再跨页！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Asterisk)
                     Exit Do
                 End If
 
-                ' 复制选中的表格
+                ' 选中表格
                 selectedTable.Select()
 
-                Dim selection As Word.Selection = Globals.ThisAddIn.Application.Selection
+                Dim selection As Word.Selection = wordApp.Selection
                 selection.MoveUp(Missing.Value, 1, Type.Missing)
 
                 ' 得到表格标题文本
@@ -1073,7 +1178,7 @@ NextParagraphDangling:
                     Exit Sub
                     Console.WriteLine("表格没有跨页。")
                 End If
-                selection.MoveUp(Missing.Value, 1, Type.Missing)
+                'selection.MoveUp(Missing.Value, 1, Type.Missing)
                 ' 调整拆分后的表标题格式
                 FormatTableTitle(selection, tableTitle)
 
@@ -1147,6 +1252,25 @@ NextParagraphDangling:
     End Sub
     Private Sub CopyHeader(ByRef originalTable As Word.Table, ByRef newTable As Word.Table)
         ' 在新表格的顶部插入一行
+        'newTable.Rows.Add(BeforeRow:=newTable.Rows(1))
+
+        ' 复制原始表格的表头到新表格的第一行
+        originalTable.Rows(1).Range.Copy()
+
+        ' 粘贴到新表格的第一行，假设新表格已经有了一行
+        newTable.Rows(1).Range.Paste()
+
+        ' 如果需要调整边框样式，可以在这里进行
+        ' 以下代码为所有新表头单元格设置底部边框样式
+        Dim cell As Word.Cell
+        For Each cell In newTable.Rows(1).Cells
+            cell.Borders(WdBorderType.wdBorderBottom).LineStyle = WdLineStyle.wdLineStyleSingle
+            cell.Borders(WdBorderType.wdBorderBottom).LineWidth = WdLineWidth.wdLineWidth100pt
+        Next
+    End Sub
+
+    Private Sub CopyHeader2(ByRef originalTable As Word.Table, ByRef newTable As Word.Table)
+        ' 在新表格的顶部插入一行
         newTable.Rows.Add(BeforeRow:=newTable.Rows(1))
 
         ' 复制原始表格的表头到新表格的第一行
@@ -1155,7 +1279,7 @@ NextParagraphDangling:
             newTable.Cell(1, iCol).Range.Text = originalTable.Cell(1, iCol).Range.Text.Replace(vbCr, String.Empty)
         Next
         newTable.Rows(1).Select()
-        Globals.ThisAddIn.Application.Selection.Cells.Borders(WdBorderType.wdBorderBottom).LineWidth = WdLineWidth.wdLineWidth100pt
+        wordApp.Selection.Cells.Borders(WdBorderType.wdBorderBottom).LineWidth = WdLineWidth.wdLineWidth100pt
     End Sub
     Private Function GetTableIndex(ByVal tbl As Word.Table) As Integer
         Dim i As Integer
@@ -1181,28 +1305,40 @@ NextParagraphDangling:
 
     End Sub
 
-    Private Sub Button11_Click(sender As Object, e As RibbonControlEventArgs) Handles Button11.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub CoverChk_Click(sender As Object, e As RibbonControlEventArgs) Handles CoverChkBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
+        progressHandler.ProgressStart()
         ' 查找具有特定样式的段落并替换空格，同时删除末尾多余空格
-        ProcessFirstPageParagraphs(currentDoc, "标准文件_文件名称", True)
-
+        Dim uppercaseWord As String = ProcessFirstPageParagraphs(currentDoc, "标准文件_文件名称", True)
+        progressHandler.UpdateProgress(50, "检查封面中文标准文件名")
         ' 查找具有特定样式的段落并格式化英文名称，同时删除末尾多余空格
-        ProcessFirstPageParagraphs(currentDoc, "封面标准英文名称", False)
-
+        ProcessFirstPageParagraphs(currentDoc, "封面标准英文名称", False, uppercaseWord)
+        progressHandler.UpdateProgress(100, "检查封面英文标准文件名")
         ' 查找具有特定样式的段落并格式化英文名称，同时删除末尾多余空格
         'Com不允许编辑：ProcessFirstPageParagraphs(currentDoc, "标准文件_正文标准名称", False)
+        progressHandler.ProgressEnd()
     End Sub
     ' 处理指定样式的段落
-    Private Sub ProcessFirstPageParagraphs(doc As Word.Document, styleName As String, replaceSpaces As Boolean)
-        Dim wordApp As Word.Application = doc.Application
+    Private Function ProcessFirstPageParagraphs(doc As Word.Document, styleName As String, replaceSpaces As Boolean, Optional words As String = "") As String
+        Dim uppercaseWord As String = ""
         For Each para As Word.Paragraph In currentDoc.Paragraphs
-            If para.Style.NameLocal = "标准文件_章标题" Then Exit Sub
+            If para.Style.NameLocal = "标准文件_章标题" Then Return uppercaseWord
             If para.Style.NameLocal = styleName Then
                 wordApp.Selection.Start = para.Range.Start
                 wordApp.Selection.End = para.Range.End - 1
 
                 ' 删除末尾多余空格
                 wordApp.Selection.Text = Trim(wordApp.Selection.Text)
+                Dim regex As New Regex("[A-Z]+")
+                Dim match As Match = regex.Match(wordApp.Selection.Text)
+                If match.Success Then
+                    uppercaseWord = match.Value ' 提取到的大写英文字符串
+                End If
 
                 If replaceSpaces Then
                     ' 替换一个或多个半角空格为一个全角空格
@@ -1214,7 +1350,7 @@ NextParagraphDangling:
                         .MatchWildcards = True ' 启用通配符匹配
                         .Execute(Replace:=Word.WdReplace.wdReplaceAll)
                     End With
-                    Exit Sub
+                    Return uppercaseWord
                 Else
                     ' 格式化英文名称
                     wordApp.Selection.Text = LCase(wordApp.Selection.Text)
@@ -1223,40 +1359,6 @@ NextParagraphDangling:
                         wordApp.Selection.Text = UCase(Mid(wordApp.Selection.Text, 1, 1)) & Mid(wordApp.Selection.Text, 2)
                     End If
 
-                    '' 第一步：替换所有的 "-" 为 "—"
-                    'With wordApp.Selection.Find
-                    '    .ClearFormatting()
-                    '    .Text = "-"
-                    '    .Replacement.ClearFormatting()
-                    '    .Replacement.Text = ""
-                    '    .Execute(Replace:=Word.WdReplace.wdReplaceNone)
-                    '    While .Found
-                    '        ' 检查前后是否有空格
-                    '        Dim beforeChar As String = ""
-                    '        If wordApp.Selection.Start > 1 Then
-                    '            beforeChar = doc.Range(wordApp.Selection.Start - 1, wordApp.Selection.Start).Text
-                    '        End If
-                    '        Dim afterChar As String = ""
-                    '        If wordApp.Selection.End <doc.Content.End Then
-                    '            afterChar = doc.Range(wordApp.Selection.End, wordApp.Selection.End + 1).Text
-                    '        End If
-
-                    '        ' 根据需要添加空格
-                    '        Dim replacementText As String = "—"
-                    '        If beforeChar <> " " Then replacementText = " " & replacementText
-                    '        If afterChar <> " " Then replacementText = replacementText & " "
-
-                    '        wordApp.Selection.Text = replacementText
-
-                    '        ' 移动到下一个 "-" 以避免重复替换
-                    '        wordApp.Selection.Start = wordApp.Selection.Start + replacementText.Length
-                    '        wordApp.Selection.End = wordApp.Selection.Start
-                    '        .Execute(Replace:=Word.WdReplace.wdReplaceNone)
-                    '    End While
-                    'End With
-
-                    ' 第二步：将 "—","-"或":" 前后空格去掉,之后的英文字母转为大写
-                    ' 获取当前段落的范围
                     Dim currentParagraph As Word.Range = wordApp.Selection.Paragraphs(1).Range
                     Dim paragraphStart As Integer = currentParagraph.Start
                     Dim paragraphEnd As Integer = currentParagraph.End
@@ -1297,13 +1399,40 @@ NextParagraphDangling:
                             ' 移动到下一个匹配的字符，但不超过段落范围
                             wordApp.Selection.SetRange(wordApp.Selection.End, paragraphEnd)
                         End While
+                        '替换
                     End With
-                    Exit Sub
+                    If words.Length > 2 AndAlso wordApp.Selection.Text.ToUpper.Contains(words) Then
+                        ' 保存原始选区范围
+                        Dim originalRange As Word.Range = wordApp.Selection.Range
+
+                        With wordApp.Selection.Find
+                            .ClearFormatting()
+                            .Text = words ' 设置查找内容
+                            .Replacement.ClearFormatting()
+                            .Forward = True ' 向前查找
+                            .Wrap = Word.WdFindWrap.wdFindStop ' 查找到选区末尾停止
+                            .Format = False ' 不使用特殊格式
+                            .MatchCase = False ' 不区分大小写
+                            .MatchWholeWord = True ' 全词匹配
+                            .MatchWildcards = False ' 不使用通配符
+                            .MatchSoundsLike = False ' 不使用发音相似查找
+                            .MatchAllWordForms = False ' 不查找词的所有形式
+
+                            ' 在选区内执行查找并替换操作
+                            Do While .Execute(FindText:=words, ReplaceWith:=words,
+                                           Replace:=Word.WdReplace.wdReplaceOne, Forward:=True,
+                                           Wrap:=Word.WdFindWrap.wdFindStop)
+                                ' 替换一次后退出
+                                Return uppercaseWord
+                            Loop
+                        End With
+                    End If
+                    Return uppercaseWord
                 End If
             End If
         Next
-    End Sub
-
+        Return uppercaseWord
+    End Function
 
     Private Sub ProcessParagraphWithStyle2(doc As Word.Document, styleName As String, replaceSpaces As Boolean)
         For Each para As Word.Paragraph In doc.Paragraphs
@@ -1340,11 +1469,16 @@ NextParagraphDangling:
         Next
     End Sub
 
-    Private Sub Button12_Click(sender As Object, e As RibbonControlEventArgs) Handles Button12.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub ForewordChk_Click(sender As Object, e As RibbonControlEventArgs) Handles ForewordChkBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         Dim introStarted As Boolean = False
         Dim introEnded As Boolean = False
-
+        progressHandler.ProgressStartWaiting()
         For Each para In currentDoc.Paragraphs
             Dim paraStyle As String = para.Style.NameLocal
             Dim paraText As String = para.Range.Text
@@ -1369,17 +1503,23 @@ NextParagraphDangling:
                 End If
             End If
         Next
+        progressHandler.ProgressEnd()
     End Sub
 
-    Private Sub Button13_Click(sender As Object, e As RibbonControlEventArgs) Handles Button13.Click
-        If Not activedoc() Then Exit Sub
+    Private Sub AbbChk_Click(sender As Object, e As RibbonControlEventArgs) Handles AbbChkBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
         Dim chapterStarted As Boolean = False
         Dim chapterStartIndex As Integer = 0
         Dim paragraphsDetails As New List(Of Tuple(Of String, String))() ' 存储段落首字符和完整文本
 
         Dim paraCount As Integer = currentDoc.Paragraphs.Count
         Dim i As Integer = 1
-
+        progressHandler.ProgressStartWaiting()
         While i <= paraCount
             Dim para As Word.Paragraph = currentDoc.Paragraphs(i)
             Dim paraStyle As String = para.Style.NameLocal
@@ -1397,6 +1537,7 @@ NextParagraphDangling:
             If chapterStarted Then
                 ' 收集段落首字符和文本，准备排序
                 If Not String.IsNullOrEmpty(paraText) Then
+                    paraText = ReplaceWithFullWidthSpace(paraText)
                     Dim match As Match = Regex.Match(paraText, "^[1-9A-Za-z]+")
                     If match.Success AndAlso Not IsStringPresentTimes(match.Value, 1) Then
                         currentDoc.Comments.Add(currentDoc.Paragraphs(chapterStartIndex).Range, "术语" & match.Value & "在文中没有出现。")
@@ -1423,6 +1564,7 @@ NextParagraphDangling:
                         insertRange.InsertAfter(combinedText & vbCr)
                         insertRange.Style = currentDoc.Styles("标准文件_段")
 
+                        progressHandler.ProgressEnd()
                         ' 退出函数
                         Exit Sub
                     End If
@@ -1431,76 +1573,74 @@ NextParagraphDangling:
                 i += 1
             End If
         End While
+        progressHandler.ProgressEnd()
     End Sub
+    Public Function ReplaceWithFullWidthSpace(input As String) As String
+        ' 正则表达式分为两部分：
+        ' 1. 匹配一个英文字母或数字后面紧跟的空格、冒号或破折号（假设为两个连续的减号）
+        ' 2. 紧接着匹配的是第一个中文字符
+        Dim regex As New Regex("([A-Za-z0-9])(\s|:|--)*([\u4e00-\u9fff])")
 
-    'Private Sub Button14_Click(sender As Object, e As EventArgs) Handles Button14.Click
-    '    If Not activedoc() Then Exit Sub
+        ' 使用正则表达式的Replace方法，将匹配到的部分替换为英文字符或数字、一个全角空格和中文字符的组合
+        Dim result As String = regex.Replace(input, Function(m) m.Groups(1).Value & ChrW(&H3000) & m.Groups(3).Value)
 
-    '    ' 从用户获取需要查找的字符或字符串
-    '    Dim userInput As String = InputBox("请输入需要查找的字符或字符串:", "查找字符", "x")
-    '    If String.IsNullOrEmpty(userInput) Then Exit Sub
+        Return result
+    End Function
 
-    '    ' 为用户输入构建正则表达式
-    '    Dim pattern As String = $"(?<=[\u4e00-\u9fff]|[，。！？,.\s])({System.Text.RegularExpressions.Regex.Escape(userInput)})(?=[\u4e00-\u9fff]|[，。！？,.\s])"
-    '    Dim regex As New System.Text.RegularExpressions.Regex(pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase)
-
-    '    ' 遍历文档中的所有内容，查找匹配项
-    '    Dim matches As System.Text.RegularExpressions.MatchCollection = regex.Matches(currentDoc.Content.Text)
-    '    Console.WriteLine($"找到匹配项数量: {matches.Count}") ' 输出匹配项的数量，便于调试
-
-    '    For Each match As System.Text.RegularExpressions.Match In matches
-    '        Dim matchRange As Range = currentDoc.Range(Start:=match.Index, End:=match.Index + match.Length)
-    '        ' 应用斜体和Cambria字体
-    '        With matchRange.Font
-    '            .Italic = True
-    '            .Name = "Cambria"
-    '        End With
-    '    Next
-    'End Sub
-
-    'Private Sub Button14_Click(sender As Object, e As EventArgs) Handles Button14.Click
-    '    If Not activedoc() Then Exit Sub
-
-    '    ' 从用户获取需要查找的字符或字符串
-    '    Dim userInput As String = InputBox("请输入需要查找的字符或字符串:", "查找字符", "x")
-    '    If String.IsNullOrEmpty(userInput) Then Exit Sub
-
-    '    ' 为用户输入构建正则表达式
-    '    Dim pattern As String = $"(?<=[\u4e00-\u9fff]|[，。！？,.\s])({System.Text.RegularExpressions.Regex.Escape(userInput)})(?=[\u4e00-\u9fff]|[，。！？,.\s])"
-    '    Dim regex As New System.Text.RegularExpressions.Regex(pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase)
-
-    '    ' 遍历文档中的所有内容，查找匹配项
-    '    Dim currentRange As Range = currentDoc.Content
-    '    Dim matches As System.Text.RegularExpressions.MatchCollection = regex.Matches(currentRange.Text)
-
-    '    For Each match As System.Text.RegularExpressions.Match In matches
-    '        MessageBox.Show($"找到匹配项: {match.Value}") ' 显示调试信息
-    '        ' 在这里，我们需要一个方法来定位Word中的匹配项并应用格式，但由于直接操作Word文档进行格式化比较复杂，以下代码是概念性的
-    '        ' 可以使用currentRange.SetRange等方法来定位和格式化匹配的文本，但需要精确计算位置
-    '    Next
-
-    '    ' 注意：此处的代码并未直接应用格式，因为需要更复杂的逻辑来定位文本并应用格式
-    'End Sub
-
-    Private Sub Button14_Click(sender As Object, e As EventArgs) Handles Button14.Click
-        If Not activedoc() Then Exit Sub
-        ' 开启当前文档的修订模式
+    Private Sub VarFontMdf_Click(sender As Object, e As EventArgs) Handles VarFontMdfBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
+        DecryptDoc(currentDoc)
         currentDoc.TrackRevisions = True
 
-        ' 从用户获取需要查找的字符或字符串
-        Dim userInput As String = InputBox("请输入需要查找的字符或字符串:", "查找字符", "x")
-        If String.IsNullOrEmpty(userInput) Then Exit Sub
-        Dim modifiedCount = 0
+        Dim stringArray As String()
+        If sender Is Nothing Then
+            stringArray = New String() {"ɑ", "β", "x", "y", "z", "X", "Y", "Z", "a'", "b'", "u'", "v'", "x'", "y'", "z'", "U'", "V'", "X'", "Y'", "Z'", "u''", "v''", "x''", "y''", "z''", "U''", "V''", "X''", "Y''", "Z''"}
+        Else
+            Dim userInput As String = InputBox("请输入需要查找的字符或字符串:", "查找字符", "x")
+            If String.IsNullOrEmpty(userInput) Then Exit Sub
+            stringArray = userInput.Replace(" ", "").Split(New Char() {","c})
+        End If
 
+        Dim modifiedCount = 0
+        Dim totalItems = stringArray.Length
+        progressHandler.ProgressStart()
+
+        For index As Integer = 0 To totalItems - 1
+            Dim currentItem = stringArray(index)
+            Dim percent As Integer = CInt((index / totalItems) * 100)
+
+            ' 此处调用处理函数，传入currentItem作为参数
+            ProcessItem(currentItem, modifiedCount)
+
+            progressHandler.UpdateProgress(percent, "处理变量" & currentItem & "。")
+        Next
+
+        progressHandler.ProgressEnd()
+
+        If Not sender Is Nothing Then
+            If modifiedCount > 0 Then
+                MessageBox.Show("发现" & modifiedCount & "个变量，已处理为斜体。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Else
+                MessageBox.Show("没有发现满足条件的变量。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            End If
+        End If
+    End Sub
+
+    Private Sub ProcessItem(item As String, ByRef modifiedCount As Integer)
         ' 正则表达式用于匹配非英文字符的边界
-        Dim pattern As String = $"(?<=[\u4e00-\u9fff]|[，。！？,.\s])(?<![a-zA-Z])({System.Text.RegularExpressions.Regex.Escape(userInput)})(?![a-zA-Z])(?=[\u4e00-\u9fff]|[，。！？,.\s])"
-        Dim regex As New System.Text.RegularExpressions.Regex(pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+        Dim pattern As String = $"(?<=[\u4e00-\u9fff]|[，。！？,.\s])(?<![a-zA-Z])({System.Text.RegularExpressions.Regex.Escape(item)})(?![a-zA-Z])(?=[\u4e00-\u9fff]|[，。！？,.\s])"
+        Dim regex As New System.Text.RegularExpressions.Regex(pattern)
 
         ' 遍历文档中的所有内容，查找匹配项
         Dim currentRange As Word.Range = currentDoc.Content
         currentRange.Find.ClearFormatting()
         With currentRange.Find
-            .Text = userInput
+            .Text = item
             .MatchCase = True
             .MatchWholeWord = False  ' 修改这里，以匹配单个字符
             .MatchWildcards = False
@@ -1510,16 +1650,18 @@ NextParagraphDangling:
 
         Do While currentRange.Find.Execute
             Dim isSuperscriptOrSubscript As Boolean = currentRange.Font.Superscript <> 0 Or currentRange.Font.Subscript <> 0
-            Dim isValidContext As Boolean = True
-
-            ' 检查字符前后是否有英文字母，除非是上标或下标
-            If Not isSuperscriptOrSubscript Then
-                Dim currentStart As Integer = currentRange.Start
-                Dim currentEnd As Integer = currentRange.End
-                Dim isAlphabeticBefore As Boolean = currentStart > 1 AndAlso System.Text.RegularExpressions.Regex.IsMatch(currentDoc.Range(currentStart - 1, currentStart).Text, "[a-zA-Z]")
-                Dim isAlphabeticAfter As Boolean = currentEnd < currentDoc.Content.End AndAlso System.Text.RegularExpressions.Regex.IsMatch(currentDoc.Range(currentEnd, currentEnd + 1).Text, "[a-zA-Z]")
-                isValidContext = Not isAlphabeticAfter And Not isAlphabeticBefore
-            End If
+            Dim isValidContext As Boolean = False
+            Dim currentStart As Integer = currentRange.Start
+            Dim currentEnd As Integer = currentRange.End
+            Try
+                ' 检查字符前后是否有英文字母，除非是上标或下标
+                If Not currentDoc.Range(currentStart - 1, currentStart).Style Is Nothing AndAlso Not currentDoc.Range(currentStart - 1, currentStart).Text Is Nothing AndAlso Not currentDoc.Range(currentEnd, currentEnd + 1).Text Is Nothing AndAlso Not isSuperscriptOrSubscript Then
+                    Dim isAlphabeticBefore As Boolean = currentStart > 1 AndAlso System.Text.RegularExpressions.Regex.IsMatch(currentDoc.Range(currentStart - 1, currentStart).Text, "[a-zA-Z0]")
+                    Dim isAlphabeticAfter As Boolean = currentEnd < currentDoc.Content.End AndAlso System.Text.RegularExpressions.Regex.IsMatch(currentDoc.Range(currentEnd, currentEnd + 1).Text, "[a-zA-Z0-9._-]")
+                    isValidContext = Not isAlphabeticAfter And Not isAlphabeticBefore
+                End If
+            Catch
+            End Try
 
             If isValidContext Then
                 With currentRange.Font
@@ -1530,46 +1672,34 @@ NextParagraphDangling:
             End If
 
             ' 确保不会超出文档范围
-            If currentRange.End + 1 <= currentDoc.Content.End Then
-                currentRange.Start = currentRange.End + 1
+            ' 调整 Range，尝试更安全地移动到下一个位置
+            Dim nextStart As Long
+            If currentRange.Tables.Count > 0 Then
+                ' 如果当前 Range 在表格中，尝试定位到表格之外或到下一个单元格
+                nextStart = currentRange.Tables(1).Range.End + 1
+            Else
+                nextStart = currentRange.End + 1
+            End If
+
+            If nextStart <= currentDoc.Content.End Then
+                currentRange.Start = nextStart
             Else
                 Exit Do
             End If
         Loop
-        ' 显示消息框
-        If modifiedCount > 0 Then
-            MessageBox.Show(modifiedCount & "个变量 " & userInput & " 已被改为斜体，请检查确认。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
-        Else
-            MessageBox.Show("没有发现满足条件的变量 " & userInput & "。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
-        End If
     End Sub
+    Private Sub ListChk_Click(sender As Object, e As RibbonControlEventArgs) Handles ListChkBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
 
-    Private Sub Button15_Click(sender As Object, e As RibbonControlEventArgs) Handles Button15.Click
-        If Not activedoc() Then Exit Sub
-        Dim wordApp As Microsoft.Office.Interop.Word.Application = Globals.ThisAddIn.Application
-        Dim progressForm As New ProgressForm()
-        Dim wordAppHwnd As IntPtr = New IntPtr(CType(wordApp.ActiveWindow.Hwnd, Long))
-        Dim dpi As Integer = NativeMethods.GetDpiForWindow(wordAppHwnd)
-        'Dim graphics As Graphics = Graphics.FromHwnd(IntPtr.Zero)
-        Dim scaleX As Single = dpi / 96.0 'graphics.DpiX / 96 ' 默认DPI为96
-        Dim scaleY As Single = dpi / 96.0 'graphics.DpiY / 96
-        'Graphics.Dispose()
+        progressHandler.ProgressStart()
 
-        Dim wordWindowRectangle As Drawing.Rectangle = GetWordWindowRectangle(wordApp)
-
-        ' 计算窗体的新位置，使之居中于Word窗口
-        Dim formLeft As Integer = wordWindowRectangle.Left + (wordWindowRectangle.Width - progressForm.Width * scaleX) / 2
-        Dim formTop As Integer = wordWindowRectangle.Top + (wordWindowRectangle.Height - progressForm.Height * scaleY) / 2
-
-        progressForm.StartPosition = FormStartPosition.Manual
-        progressForm.Location = New Drawing.Point(formLeft, formTop)
-
-        ' 显示窗体
-        progressForm.Show()
-        wordApp.ScreenUpdating = False
-
-        ' 不需要更改背景颜色的样式名称集合
-        Dim excludedStyles As New List(Of String) From {"章", "条", "标题", "附录", "图", "表", "注"}
+        ' 不是列项的名称集合
+        Dim excludedStyles As New List(Of String) From {"章", "条", "标题", "附录", "图", "表", "注", "例"}
         Dim isInList As Boolean = False
         Dim lastParagraphStyle As String = String.Empty
         Dim lastParagraphEndsWith As Char = Char.MinValue
@@ -1590,8 +1720,8 @@ NextParagraphDangling:
                 ' 仅当进度实际改变时更新UI
                 If currentProgress <> lastProgress Then
                     ' 更新进度条
-                    progressForm.UpdateProgress(currentProgress)
-                    progressForm.UpdateMessage("进度：" & currentProgress & "%")
+                    progressHandler.UpdateProgress(currentProgress, "进度：" & currentProgress & "%")
+
                     lastProgress = currentProgress
                 End If
                 ' 减少DoEvents调用，只在关键进度更新时调用
@@ -1609,18 +1739,18 @@ NextParagraphDangling:
                 Dim currentText As String = para.Range.Text.Trim()
                 If currentText.Length > 0 Then
                     If para.Range.ListFormat.ListType <> Word.WdListType.wdListNoNumbering AndAlso Not excludedStyles.Any(Function(style) currentStyle.Contains(style)) Then
-                        '替换末尾英文标点符号为中文标点符号
+                        '替换末尾英文标点符号为中文标点符号，比变冒号
                         ReplaceEnglishPunctuationAtEndOfParagraph(currentDoc, para)
                         lastParagraphEndsWith = ReplaceEnglishPunctuationAtEndOfParagraph(currentDoc, para.Previous)
 
                         If Not isInList Then
                             ' 检查上一段落是否符合特定样式和结尾符号
-                            If lastParagraphStyle.Contains("段") AndAlso (lastParagraphEndsWith = "："c OrElse lastParagraphEndsWith = "。"c) Then
+                            If (lastParagraphStyle.Contains("段") OrElse lastParagraphStyle.Contains("正文")) AndAlso (lastParagraphEndsWith = "："c OrElse lastParagraphEndsWith = "。"c) Then
                                 isInList = True ' 进入列项
                                 listItemEndCharacter = If(lastParagraphEndsWith = "："c, "；"c, "。"c) ' 决定列项结束符
                                 firstListItem = True
                             ElseIf Not missLeading Then
-                                para.Range.Comments.Add(para.Range, "缺少引导语（GB/T 1.1—2020的7.5）或前段样式不对。")
+                                para.Range.Comments.Add(para.Range, "缺少引导语（GB/T 1.1—2020的7.5）或引导语样式不对。")
                                 missLeading = True
                             End If
                         End If
@@ -1678,7 +1808,7 @@ NextParagraphDangling:
             MessageBox.Show("发生异常：" & ex.Message, "异常通知", MessageBoxButtons.OK, MessageBoxIcon.Error)
         Finally
             ' 完成处理后关闭进度窗口
-            progressForm.Close()
+            progressHandler.ProgressEnd()
         End Try
     End Sub
     Public Function ReplaceEnglishPunctuationAtEndOfParagraph(ByVal doc As Document, ByVal paragraph As Paragraph) As String
@@ -1692,7 +1822,8 @@ NextParagraphDangling:
             {".", "。"},
             {":", "："},
             {";", "；"},
-            {",", "，"}
+            {",", "，"},
+            {"∶", "："}
         }
 
             ' 检查是否需要替换
@@ -1722,16 +1853,248 @@ NextParagraphDangling:
         End If
     End Sub
 
-
-    Private Function GetWordWindowRectangle(wordApp As Application) As Drawing.Rectangle
-        ' 获取Word窗口的位置和大小
-        With wordApp.ActiveWindow
-            Return New Drawing.Rectangle(.Left, .Top, .Width, .Height)
-        End With
-    End Function
-
-    Private Sub searchStd_Click(sender As Object, e As RibbonControlEventArgs) Handles searchStd.Click
+    Private Sub SearchStd_Click(sender As Object, e As RibbonControlEventArgs) Handles SearchStdBtn.Click
+        If Not IsVip Then
+            MsgBox("该功能捐赠后可用。")
+            Exit Sub
+        End If
         Dim dialog As New BibsearchDialog()
+        dialog.LicenseKey = LicenseKey
         dialog.ShowDialog()
     End Sub
+
+    Private Sub Run_Click(sender As Object, e As RibbonControlEventArgs) Handles runBtn.Click
+        If Not IsVip Then
+            MsgBox("该功能捐赠后可用。")
+            Exit Sub
+        End If
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
+
+        Try
+            ' 保存当前文档的状态，但不关闭它
+            currentDoc.Save()
+        Catch
+            '如果现在是一个比较结果，也没有保存，那会到这里，就什么也不做
+        End Try
+        ' 保存当前文档为临时文件，作为原始副本使用
+        Dim tempPathOriginal As String = Path.GetTempFileName()
+        currentDoc.SaveAs2(tempPathOriginal)
+
+        ' 解密当前文档以便进行修改
+        DecryptDoc(currentDoc)
+
+        ' 函数调用列表，每个条目都是一个无参无返回值的匿名函数（Sub）
+        Dim actions As New List(Of System.Action) From {
+            Sub() AcceptRev(currentDoc),
+            Sub() CoverChk_Click(Nothing, e), '封面
+            Sub() AcceptRev(currentDoc),
+            Sub() StructureChk_Click(Nothing, e), '内容结构
+            Sub() AcceptRev(currentDoc),
+            Sub() ForewordChk_Click(Nothing, e),'引言
+            Sub() AcceptRev(currentDoc),
+            Sub() BibValid_Click(Nothing, e),'引用文件
+            Sub() AcceptRev(currentDoc),
+            Sub() BibRefChk_Click(Nothing, e),'引用提及
+            Sub() AcceptRev(currentDoc),
+            Sub() TermsChk_Click(Nothing, e),'术语
+            Sub() AcceptRev(currentDoc),
+            Sub() AbbChk_Click(Nothing, e),'缩略语
+            Sub() AcceptRev(currentDoc),
+            Sub() ListChk_Click(Nothing, e),'列项
+            Sub() AcceptRev(currentDoc),
+            Sub() BignumMdf_Click(Nothing, e),'千位分隔
+            Sub() AcceptRev(currentDoc),
+            Sub() UnitMdf_Click(Nothing, e),'量和单位
+            Sub() AcceptRev(currentDoc),
+            Sub() VarFontMdf_Click(Nothing, e),'变量字体
+            Sub() AcceptRev(currentDoc),
+            Sub() MergeTbl_Click(Nothing, e),'批量合并表格
+            Sub() AcceptRev(currentDoc),
+            Sub() BeautifyTbl_Click(Nothing, e),'批量美化表格
+            Sub() AcceptRev(currentDoc),
+            Sub() SplitTbl_Click(Nothing, e),'批量拆分表格
+            Sub() AcceptRev(currentDoc),
+            Sub() ApplyStyle_Click(Nothing, e), '应用样式
+            Sub() AcceptRev(currentDoc)
+        }
+
+        For Each func As System.Action In actions
+            Try
+                ' 尝试执行当前函数
+                func.Invoke()
+            Catch ex As Exception
+                ' 捕获到异常后的处理逻辑
+                Console.WriteLine($"Error in {func.Method.Name}: {ex.Message}")
+                ' 这里可以记录日志、重试或者其他自定义错误处理
+            End Try
+        Next
+
+        Try
+            ' 保存修改后的当前文档为另一个临时文件
+            Dim tempPathModified As String = Path.GetTempFileName()
+            currentDoc.SaveAs2(tempPathModified)
+
+            ' 重新打开原始文档的副本和修改后的副本进行比较
+            Dim originalDoc As Word.Document = wordApp.Documents.Open(tempPathOriginal)
+            Dim modifiedDoc As Word.Document = wordApp.Documents.Open(tempPathModified)
+            DecryptDoc(originalDoc)
+            DecryptDoc(modifiedDoc)
+
+            ' 使用CompareDocuments方法比较文档，生成比较结果作为新文档
+            Dim comparedDocument As Word.Document = wordApp.CompareDocuments(OriginalDocument:=originalDoc, RevisedDocument:=modifiedDoc, Destination:=Word.WdCompareDestination.wdCompareDestinationNew, Granularity:=Word.WdGranularity.wdGranularityCharLevel, CompareFormatting:=False, CompareHeaders:=True, CompareFootnotes:=True, CompareTextboxes:=True, CompareFields:=True, CompareComments:=False, CompareMoves:=True, IgnoreAllComparisonWarnings:=True)
+
+            ' 关闭临时文档
+            originalDoc.Close(False)
+            modifiedDoc.Close(False)
+
+            ' 清理临时文件
+            File.Delete(tempPathOriginal)
+            File.Delete(tempPathModified)
+
+            'currentDoc = comparedDocument
+            ' 加密当前文档
+            'EncryptDoc(currentDoc)
+
+            ' 比较结果文档保持打开状态
+            ' 注意：不需要再次打开currentDoc，因为它已经是打开状态
+        Catch ex As Exception
+            progressHandler.ProgressEnd()
+            MsgBox("出现错误: " & ex.Message)
+        End Try
+    End Sub
+
+    Private Sub ApplyStyle_Click(sender As Object, e As RibbonControlEventArgs) Handles ApplyStyleBtn.Click
+        If wordApp.Documents.Count > 0 Then
+            currentDoc = wordApp.ActiveDocument
+        Else
+            MsgBox("没有打开的文件。")
+            Exit Sub
+        End If
+
+        ' 应用模板中的样式到当前文档
+        currentDoc.AttachedTemplate = "C:\Users\vfx5\Downloads\行业标准.dotx"
+        currentDoc.UpdateStyles()
+    End Sub
+
+    Public Sub DecryptDoc(doc As Document)
+        'doc = Me.wordApp.ActiveDocument
+        ' 检查文档是否受保护
+        If Not doc Is Nothing AndAlso doc.ProtectionType <> WdProtectionType.wdNoProtection Then
+            ' 如果文档受到保护，尝试解除保护
+            ' 如果文档是用密码保护的，需要提供密码作为参数
+            Try
+                doc.Unprotect(Password:="haizi") ' 如果没有密码，可以省略这个参数或传递空字符串
+            Catch
+            End Try
+        End If
+    End Sub
+
+    Public Sub EncryptDoc(doc As Document)
+        'doc = Me.wordApp.ActiveDocument
+        ' 应用完模板样式后，根据需要重新保护文档
+        ' 使用适当的保护类型，例如 wdAllowOnlyReading, wdAllowOnlyFormFields 等
+        ' 如果之前解除了带密码的保护，这里也需要用同样的密码重新保护
+        If Not doc Is Nothing AndAlso doc.ProtectionType = WdProtectionType.wdNoProtection Then
+            Try
+                doc.Protect(Type:=WdProtectionType.wdAllowOnlyFormFields, NoReset:=True, Password:="haizi") ' 根据实际情况选择保护类型和是否使用密码
+            Catch
+            End Try
+        End If
+    End Sub
+
+    Private Sub AcceptRev(doc As Document)
+        ' 接受当前文档中的所有修订
+        For Each revision As Word.Revision In doc.Revisions
+            revision.Accept()
+        Next
+    End Sub
+
+    Private Sub Donate_Click(sender As Object, e As RibbonControlEventArgs) Handles DonateBtn.Click
+        Dim donateForm As New DonateForm()
+        donateForm.ShowDialog() ' 以模态方式显示窗体
+    End Sub
+
+    Private Sub Setting_Click(sender As Object, e As RibbonControlEventArgs) Handles SettingBtn.Click
+        Dim settingsForm As New SettingForm(Me)
+        settingsForm.ShowDialog() ' 或者使用 settingsForm.Show() 根据需要
+    End Sub
+    Private Sub InsertCatalog()
+        Dim flag As Boolean = False
+        Dim num_location As Integer = 0
+        For i As Integer = 2 To 4
+            If wordApp.ActiveDocument.Bookmarks.Exists("BookMark" & i) Then
+                flag = True
+                num_location = i
+                Exit For
+            End If
+        Next
+        If flag Then
+            If wordApp.ActiveDocument.Bookmarks.Exists("BookMark1") Then
+                Dim activeDocument As Document = wordApp.ActiveDocument
+                Dim bookmarks As Bookmarks = wordApp.ActiveDocument.Bookmarks
+                Dim Index As Object = "BookMark1"
+                Dim Start As Object = bookmarks(Index).Start
+                Dim bookmarks2 As Bookmarks = wordApp.ActiveDocument.Bookmarks
+                Index = "BookMark1"
+                Dim [End] As Object = bookmarks2(Index).Start
+                activeDocument.Range(Start, [End]).Select()
+            End If
+        Else
+            MessageBox.Show("目次定位标签被删除，无法插入目次！", "错误")
+        End If
+    End Sub
+    Public Sub LoadSettings()
+        Dim assemblyPath As String = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
+        Dim filePath As String = Path.Combine(assemblyPath, "setting.ini")
+        If File.Exists(filePath) Then
+            Dim lines As String() = File.ReadAllLines(filePath)
+            For Each line In lines
+                Dim parts As String() = line.Split("="c)
+                If parts.Length = 2 Then
+                    Select Case parts(0).Trim().ToLower()
+                        Case "licensekey"
+                            LicenseKey = parts(1).Trim()
+                        Case "llm"
+                            Llm = parts(1).Trim()
+                        Case "llmkey"
+                            LlmKey = parts(1).Trim()
+                    End Select
+                End If
+            Next
+
+            ' 异步执行，不阻塞UI线程
+            Threading.Tasks.Task.Run(Async Function()
+                                         Me.IsVip = Await ValidLicenseKeyAsync(LicenseKey)
+                                     End Function)
+        End If
+    End Sub
+    Friend Shared Async Function ValidLicenseKeyAsync(licenseKey As String) As Threading.Tasks.Task(Of Boolean)
+        ' 忽略SSL证书验证（生产环境中应处理证书验证）
+        ServicePointManager.ServerCertificateValidationCallback = Function(s, certificate, chain, sslPolicyErrors) True
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12
+
+        Dim success As Boolean = False
+        Dim url As String = $"https://api.relaton.top:4567/validkey?key={licenseKey}"
+        Using client As New HttpClient()
+            Try
+                Dim response As HttpResponseMessage = Await client.GetAsync(url)
+                response.EnsureSuccessStatusCode()
+                Dim responseBody As String = Await response.Content.ReadAsStringAsync()
+
+                Dim data As Dictionary(Of String, Boolean) = JsonConvert.DeserializeObject(Of Dictionary(Of String, Boolean))(responseBody)
+
+                success = If(data.ContainsKey("valid"), data("valid"), False)
+            Catch e As Exception
+                Console.WriteLine($"An error occurred: {e.Message}")
+                success = False
+            End Try
+        End Using
+        Return success
+    End Function
+
 End Class

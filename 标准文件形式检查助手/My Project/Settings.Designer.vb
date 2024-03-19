@@ -62,9 +62,9 @@ Namespace My
     Friend Module MySettingsProperty
         
         <Global.System.ComponentModel.Design.HelpKeywordAttribute("My.Settings")>  _
-        Friend ReadOnly Property Settings() As Global.标准文件形式审查助手.MySettings
+        Friend ReadOnly Property Settings() As Global.标准文件形式检查助手.MySettings
             Get
-                Return Global.标准文件形式审查助手.MySettings.Default
+                Return Global.标准文件形式检查助手.MySettings.Default
             End Get
         End Property
     End Module

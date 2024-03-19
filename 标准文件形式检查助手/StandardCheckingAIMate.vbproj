@@ -23,26 +23,26 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{55FBB49D-5DEC-4D82-9F1C-9838C5999602}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>标准文件形式审查助手</RootNamespace>
-    <AssemblyName>标准文件形式审查助手</AssemblyName>
+    <RootNamespace>标准文件形式检查助手</RootNamespace>
+    <AssemblyName>标准文件形式检查助手</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <DefineConstants>VSTO40</DefineConstants>
     <StartupObject>
     </StartupObject>
+    <IsWebBootstrapper>False</IsWebBootstrapper>
     <BootstrapperEnabled>true</BootstrapperEnabled>
     <PublishUrl>publish\</PublishUrl>
     <InstallUrl />
     <TargetCulture>zh-chs</TargetCulture>
-    <ApplicationVersion>1.0.0.0</ApplicationVersion>
+    <ApplicationVersion>0.0.1.2</ApplicationVersion>
     <AutoIncrementApplicationRevision>true</AutoIncrementApplicationRevision>
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
     <UpdateIntervalUnits>days</UpdateIntervalUnits>
-    <IsWebBootstrapper>False</IsWebBootstrapper>
-    <ProductName>标准文件形式审查助手</ProductName>
+    <ProductName>标准文件形式检查助手</ProductName>
     <PublisherName />
     <SupportUrl />
-    <FriendlyName>标准文件形式审查助手</FriendlyName>
+    <FriendlyName>标准文件形式检查助手</FriendlyName>
     <OfficeApplicationDescription />
     <LoadBehavior>3</LoadBehavior>
   </PropertyGroup>
@@ -97,7 +97,7 @@
     <DebugSymbols>true</DebugSymbols>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DocumentationFile>标准文件形式审查助手.xml</DocumentationFile>
+    <DocumentationFile>标准文件形式检查助手.xml</DocumentationFile>
     <RegisterForComInterop>false</RegisterForComInterop>
     <RemoveIntegerChecks>false</RemoveIntegerChecks>
     <NoWarn>42016,41999,42017,42018,42019,42032,42036,42020,42021,42022</NoWarn>
@@ -126,7 +126,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DocumentationFile>标准文件形式审查助手.xml</DocumentationFile>
+    <DocumentationFile>标准文件形式检查助手.xml</DocumentationFile>
     <RegisterForComInterop>false</RegisterForComInterop>
     <RemoveIntegerChecks>false</RemoveIntegerChecks>
     <NoWarn>42016,41999,42017,42018,42019,42032,42036,42020,42021,42022</NoWarn>
@@ -212,11 +212,21 @@
   -->
   <ItemGroup>
     <AppDesigner Include="My Project\" />
-    <Compile Include="Class1.vb" />
+    <Compile Include="DonateForm.Designer.vb">
+      <DependentUpon>DonateForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="DonateForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SettingForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="BibsearchDialog.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ProgressHandler.vb" />
     <Compile Include="CnGovStd.vb" />
+    <Compile Include="InternationalStd.vb" />
     <Compile Include="ProgressForm.vb">
       <SubType>Form</SubType>
     </Compile>
@@ -226,15 +236,26 @@
     <Compile Include="Ribbon1.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="StandardFileName.vb" />
+    <Compile Include="StandardDocument.vb" />
     <Compile Include="ThisAddIn.vb">
       <SubType>Code</SubType>
     </Compile>
+    <EmbeddedResource Include="DonateForm.resx">
+      <DependentUpon>DonateForm.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SettingForm.resx">
+      <DependentUpon>SettingForm.vb</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="BibsearchDialog.resx">
       <DependentUpon>BibsearchDialog.vb</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="ProgressForm.resx">
+      <DependentUpon>ProgressForm.vb</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Ribbon1.resx">
       <DependentUpon>Ribbon1.vb</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="app.manifest" />
     <None Include="packages.config" />
@@ -265,7 +286,9 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <None Include="标准文件形式审查助手_TemporaryKey.pfx" />
+    <Content Include="行业标准.dotx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
@@ -287,7 +310,7 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestKeyFile>标准文件形式审查助手_TemporaryKey.pfx</ManifestKeyFile>
+    <ManifestKeyFile>标准文件形式检查助手_TemporaryKey.pfx</ManifestKeyFile>
   </PropertyGroup>
   <PropertyGroup>
     <ManifestCertificateThumbprint>0A839DE32C3A4582A7D73A1B415D7A5FC9F76073</ManifestCertificateThumbprint>
@@ -307,8 +330,8 @@
     <VisualStudio>
       <FlavorProperties GUID="{BAA0C2D2-18E2-41B9-852F-F413020CAA33}">
         <ProjectProperties HostName="Word" HostPackage="{29A7B9D7-A7F1-4328-8EF0-6B2D1A56B2C1}" OfficeVersion="15.0" VstxVersion="4.0" ApplicationType="Word" Language="vb" TemplatesPath="" DebugInfoExeName="#Software\Microsoft\Office\16.0\Word\InstallRoot\Path#WINWORD.EXE" DebugInfoCommandLine="/x" AddItemTemplatesGuid="{DCFE8D25-4715-4C33-9EAB-A34A9EBC9544}" />
-        <Host Name="Word" IconIndex="0">
-          <HostItem Name="ThisAddIn" Code="ThisAddIn.vb" CanonicalName="AddIn" CanActivate="false" IconIndex="1" Blueprint="ThisAddIn.Designer.xml" GeneratedCode="ThisAddIn.Designer.vb" />
+        <Host Name="Word" PublishedHash="69C324AB27932AA2FBF2B7EA72250886FF164DE6" IconIndex="0">
+          <HostItem Name="ThisAddIn" Code="ThisAddIn.vb" CanonicalName="AddIn" PublishedHash="8DB4E9B4B91A1CB36C3EB1356DE8DC7251E40D5D" CanActivate="false" IconIndex="1" Blueprint="ThisAddIn.Designer.xml" GeneratedCode="ThisAddIn.Designer.vb" />
         </Host>
       </FlavorProperties>
     </VisualStudio>

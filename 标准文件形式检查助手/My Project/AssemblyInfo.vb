@@ -9,10 +9,10 @@ Imports System.Security
 
 '查看程序集特性的值
 
-<Assembly: AssemblyTitle("标准文件形式审查助手")> 
+<Assembly: AssemblyTitle("标准文件形式检查助手")> 
 <Assembly: AssemblyDescription("")> 
 <Assembly: AssemblyCompany("")> 
-<Assembly: AssemblyProduct("标准文件形式审查助手")> 
+<Assembly: AssemblyProduct("标准文件形式检查助手")> 
 <Assembly: AssemblyCopyright("Copyright ©  2024")> 
 <Assembly: AssemblyTrademark("")> 
 
@@ -22,7 +22,7 @@ Imports System.Security
 <Assembly: ComVisible(False)>
 
 '如果此项目向 COM 公开，则下列 GUID 用于类型库的 ID
-<Assembly: Guid("82c21016-3c60-42bb-bd6a-9a849fd2e78a")> 
+<Assembly: Guid("82c21016-3c60-42bb-bd6a-9a849fd2e78a")>
 
 ' 程序集的版本信息由下列四个值组成:
 '
@@ -35,8 +35,8 @@ Imports System.Security
 ' 方法是按如下所示使用“*”: :
 ' <Assembly: AssemblyVersion("1.0.*")> 
 
-<Assembly: AssemblyVersion("1.0.0.0")> 
-<Assembly: AssemblyFileVersion("1.0.0.0")> 
+<Assembly: AssemblyVersion("0.0.1.2")>
+<Assembly: AssemblyFileVersion("0.0.1.2")>
 
 Friend Module DesignTimeConstants
     Public Const RibbonTypeSerializer As String = "Microsoft.VisualStudio.Tools.Office.Ribbon.Serialization.RibbonTypeCodeDomSerializer, Microsoft.VisualStudio.Tools.Office.Designer, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"

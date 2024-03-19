@@ -1,15 +1,19 @@
 ﻿Imports System.Net.Http
 Imports Newtonsoft.Json.Linq
 Imports System.Text
-Imports System.Text.RegularExpressions ' 用于处理字符串中的正则表达式
+Imports System.Text.RegularExpressions
+Imports System.Threading.Tasks
+Imports System.Net
+Imports System.IO ' 用于处理字符串中的正则表达式
 
 Module CnGovStd
     Sub Main()
+        Dim HttpClientInstance As New HttpClient()
         ' 定义需要查询的标准代码数组
         Dim codes As String() = New String() {"GB/T 1.1", "GB/T 1.1-2009", "JB/T 6166", "JB/T 6167-2008", "GB/T 1.1-2020", "GB/T 1.1—2020", "DY/T 7-2023", "GB/T 1.1", "JB/T 234.1"}
 
         For Each code In codes
-            Dim output As String = SearchCnGovStd(code)
+            Dim output As String = SearchCnGovStd(code, HttpClientInstance)
 
             If String.IsNullOrEmpty(output) Then
                 Console.WriteLine("标准不存在或已废止")
@@ -21,8 +25,12 @@ Module CnGovStd
         Console.ReadLine()
     End Sub
 
-    Public Function SearchCnGovStd(code As String) As String
+    Public Function SearchCnGovStd(code As String, HttpClientInstance As HttpClient) As String
+        ' 忽略SSL证书验证（生产环境中应处理证书验证）
+        ServicePointManager.ServerCertificateValidationCallback = Function(sender, certificate, chain, sslPolicyErrors) True
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12
         Dim result As String = String.Empty
+        code = code.Replace("—", "-")
         Dim originalCode As String = code
         Dim processedCode As String = ProcessCode(code)
 
@@ -47,21 +55,25 @@ Module CnGovStd
 
     ' 发送HTTP请求，可以处理GET和POST请求
     Function SendHttpRequest(url As String, postData As String) As String
-        Using client As New HttpClient()
-            Dim response As HttpResponseMessage
-            If String.IsNullOrEmpty(postData) Then
-                ' 处理GET请求
-                response = client.GetAsync(url).Result
-            Else
-                ' 处理POST请求
-                Using content As New StringContent(postData, Encoding.UTF8, "application/x-www-form-urlencoded")
-                    response = client.PostAsync(url, content).Result
-                End Using
-            End If
-            response.EnsureSuccessStatusCode()
-            Return response.Content.ReadAsStringAsync().Result
+        Dim request As HttpWebRequest = CType(WebRequest.Create(url), HttpWebRequest)
+
+        If Not String.IsNullOrEmpty(postData) Then
+            request.Method = "POST"
+            request.ContentType = "application/x-www-form-urlencoded"
+            Using streamWriter As New StreamWriter(request.GetRequestStream())
+                streamWriter.Write(postData)
+            End Using
+        Else
+            request.Method = "GET"
+        End If
+
+        Using response As HttpWebResponse = CType(request.GetResponse(), HttpWebResponse)
+            Using streamReader As New StreamReader(response.GetResponseStream())
+                Return streamReader.ReadToEnd()
+            End Using
         End Using
     End Function
+
 
     ' 处理返回的JSON数据，寻找并返回现行的标准
     Function ProcessJson(jsonString As String, originalCode As String) As String
@@ -77,10 +89,13 @@ Module CnGovStd
             If status = "现行" Then
                 Dim code As String = If(item("C_STD_CODE")?.ToString(), item("code")?.ToString())
                 Dim name As String = If(item("C_C_NAME")?.ToString(), item("chName")?.ToString())
+                '修复网站提供数据的错误
+                code = Regex.Replace(code, "<.*?>", String.Empty)
+                name = Regex.Replace(name, "<.*?>", String.Empty)
                 ' 对于不需要年份的情况，返回不带年份的标准代码和名称
                 If needsYearRemoval Then code = ProcessCode(code)
                 If Not String.IsNullOrEmpty(code) AndAlso Not String.IsNullOrEmpty(name) Then
-                    Return $"{code.Replace("-", "—")}　{name.Replace("  ", "　").Replace(" ", "　")}"
+                    Return StandardDocument.FormatedFileName($"{code.Replace("-", "—")}　{name.Replace("  ", "　").Replace(" ", "　")}")
                 End If
             End If
         Next
