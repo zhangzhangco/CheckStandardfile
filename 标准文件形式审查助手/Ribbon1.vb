@@ -1533,7 +1533,7 @@ NextParagraphDangling:
             If currentRange.End + 1 <= currentDoc.Content.End Then
                 currentRange.Start = currentRange.End + 1
             Else
-                Exit Sub
+                Exit Do
             End If
         Loop
         ' 显示消息框

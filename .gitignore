@@ -361,3 +361,10 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/标准文件形式检查助手/update-SetupFiles
+/标准文件形式检查助手/StandardCheckingAIMate-cache
+/标准文件形式检查助手/setup-cache
+/标准文件形式检查助手/Setup Files
+/标准文件形式检查助手/update.aip
+/标准文件形式检查助手/upload.ps1
+/标准文件形式检查助手/upload_script.txt
