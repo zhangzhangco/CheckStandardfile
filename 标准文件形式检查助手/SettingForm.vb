@@ -9,6 +9,7 @@ Imports System.Windows.Forms.VisualStyles
 Imports System.IO
 Imports Application = System.Windows.Forms.Application
 Imports System.Reflection
+Imports System.Diagnostics
 Public Class SettingForm
     Inherits Form
 
@@ -29,6 +30,7 @@ Public Class SettingForm
 
     ' 使用静态HttpClient实例以提高效率和资源复用
     Public Shared ReadOnly HttpClientInstance As New HttpClient()
+    Friend WithEvents update As Button
     Private _rb As Ribbon1
 
     Public Sub New(rb As Ribbon1)
@@ -50,6 +52,7 @@ Public Class SettingForm
         Me.OK = New System.Windows.Forms.Button()
         Me.Cancel = New System.Windows.Forms.Button()
         Me.Panel1 = New System.Windows.Forms.Panel()
+        Me.update = New System.Windows.Forms.Button()
         Me.GroupBox1.SuspendLayout()
         Me.GroupBox2.SuspendLayout()
         Me.SuspendLayout()
@@ -188,11 +191,21 @@ Public Class SettingForm
         Me.Panel1.Size = New System.Drawing.Size(759, 456)
         Me.Panel1.TabIndex = 4
         '
+        'update
+        '
+        Me.update.Location = New System.Drawing.Point(37, 499)
+        Me.update.Name = "update"
+        Me.update.Size = New System.Drawing.Size(112, 39)
+        Me.update.TabIndex = 5
+        Me.update.Text = "更新"
+        Me.update.UseVisualStyleBackColor = True
+        '
         'SettingForm
         '
         Me.AcceptButton = Me.OK
         Me.CancelButton = Me.Cancel
         Me.ClientSize = New System.Drawing.Size(784, 567)
+        Me.Controls.Add(Me.update)
         Me.Controls.Add(Me.Cancel)
         Me.Controls.Add(Me.OK)
         Me.Controls.Add(Me.GroupBox2)
@@ -218,7 +231,7 @@ Public Class SettingForm
     Private Sub SaveSettings()
         ' 获取当前执行的DLL的目录
         Dim assemblyPath As String = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-        Dim filePath As String = Path.Combine(assemblyPath, "setting.ini")
+        Dim filePath As String = Path.Combine(assemblyPath, Ribbon1.IniPath)
 
         ' 接下来，保存设置到setting.ini文件
         Using writer As New StreamWriter(filePath, False)
@@ -232,7 +245,7 @@ Public Class SettingForm
     Private Sub LoadSettings()
         ' 获取当前执行的DLL的目录
         Dim assemblyPath As String = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-        Dim filePath As String = Path.Combine(assemblyPath, "setting.ini")
+        Dim filePath As String = Path.Combine(assemblyPath, Ribbon1.StylePath)
 
         If File.Exists(filePath) Then
             ' 文件存在时，加载设置
@@ -261,5 +274,9 @@ Public Class SettingForm
                                                 Forms.MessageBox.Show("测试成功。", "测试结果", MessageBoxButtons.OK, MessageBoxIcon.Information)
                                             End If
                                         End Function)
+    End Sub
+
+    Private Sub update_Click(sender As Object, e As EventArgs) Handles update.Click
+        Dim process1 As Process = Process.Start(Ribbon1.UpdaterPath, "/checknow")
     End Sub
 End Class

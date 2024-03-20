@@ -35,6 +35,10 @@ Public Class Ribbon1
     Public Property Llm As String
     Public Property LlmKey As String
     Public Property IsVip As Boolean = False
+    Public Shared ReadOnly InstalledPath = Environment.GetEnvironmentVariable("APPDATA") & "\RelatonChina\标准形式检查助手\"
+    Public Shared ReadOnly IniPath = InstalledPath & "setting.ini"
+    Public Shared ReadOnly StylePath = InstalledPath & "行业标准.dotx"
+    Public Shared ReadOnly UpdaterPath = InstalledPath & "更新.exe"
 
     Private Sub Ribbon1_Load(ByVal sender As System.Object, ByVal e As RibbonUIEventArgs) Handles MyBase.Load
         wordApp = Globals.ThisAddIn.Application
@@ -43,7 +47,7 @@ Public Class Ribbon1
 
     Private Sub About_Click(sender As Object, e As RibbonControlEventArgs) Handles AboutBtn.Click
         Dim aboutMessage As String = "形式检查助手" & Environment.NewLine
-        aboutMessage &= "版本: 0.1.1" & Environment.NewLine
+        aboutMessage &= "版本: 0.2.2" & Environment.NewLine
         aboutMessage &= "WeChat：HelloLLM2035" & Environment.NewLine
         aboutMessage &= "用于辅助进行标准形式检查和编制的小工具。"
 
@@ -328,7 +332,7 @@ Public Class Ribbon1
             Next j
         Else
             If Not sender Is Nothing Then
-                MsgBox("未找到'规范性引用文件'章节")
+                MsgBox("未找到'规范性引用文件'章节，您可能未使用SET 2020编写此文件。")
             End If
             '批注缺少章节
             missingBib(currentDoc)
@@ -757,7 +761,7 @@ NextParagraphDangling:
                     "毫克每升|mg/L|微克每升|μg/L|微克每立方米|μg/m3|" &
                     "克每升|g/L|毫克每毫升|mg/ml|升每分钟|l/min|" &
                     "立方米每小时|m3/h|千瓦|kW|兆瓦|MW|吉瓦|GW|太瓦|TW|" &
-                    "千伏安|kVA|兆伏安|MVA|吉伏安|GVA|公里每小时|km/h|纳米|nm|度|°|比特|bit"
+                    "千伏安|kVA|兆伏安|MVA|吉伏安|GVA|公里每小时|km/h|纳米|nm|微米|μm|度|°|比特|bit"
         Dim unitMap As New Dictionary(Of String, String) From {
                                 {"米", "m"},
                                 {"千克", "kg"},
@@ -856,6 +860,7 @@ NextParagraphDangling:
                                 {"吉伏安", "GVA"},
                                 {"公里每小时", "km/h"},
                                 {"纳米", "nm"},
+                                {"微米", "μm"},
                                 {"度", "°"},
                                 {"比特", "bit"}
                             }
@@ -903,7 +908,22 @@ NextParagraphDangling:
 
                 ' 检查原文本与新文本是否不同，若不同，则替换
                 If originalText <> newText Then
-                    matchRange.Text = newText
+                    ' 先检查是否以"2"或"3"结尾
+                    If newText.EndsWith("2") Or newText.EndsWith("3") Then
+                        ' 先设置除最后一个字符外的所有文本
+                        Dim textWithoutLastChar As String = newText.Substring(0, newText.Length - 1)
+                        matchRange.Text = textWithoutLastChar
+
+                        ' 为最后一个字符创建新的Range
+                        Dim lastCharRange As Word.Range = currentDoc.Range(Start:=matchRange.End, End:=matchRange.End)
+                        lastCharRange.Text = newText.Substring(newText.Length - 1)
+
+                        ' 应用上标格式
+                        lastCharRange.Font.Superscript = True
+                    Else
+                        ' 如果不以"2"或"3"结尾，正常替换文本
+                        matchRange.Text = newText
+                    End If
                 End If
             Next
         Next
@@ -1977,7 +1997,7 @@ NextParagraphDangling:
         End If
 
         ' 应用模板中的样式到当前文档
-        currentDoc.AttachedTemplate = "C:\Users\vfx5\Downloads\行业标准.dotx"
+        currentDoc.AttachedTemplate = StylePath
         currentDoc.UpdateStyles()
     End Sub
 
@@ -2050,7 +2070,7 @@ NextParagraphDangling:
     End Sub
     Public Sub LoadSettings()
         Dim assemblyPath As String = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-        Dim filePath As String = Path.Combine(assemblyPath, "setting.ini")
+        Dim filePath As String = Path.Combine(assemblyPath, IniPath)
         If File.Exists(filePath) Then
             Dim lines As String() = File.ReadAllLines(filePath)
             For Each line In lines
@@ -2097,4 +2117,8 @@ NextParagraphDangling:
         Return success
     End Function
 
+    Private Sub AIwriting_Click(sender As Object, e As RibbonControlEventArgs) Handles AIwriting.Click
+        MsgBox("该功能正在开发，请捐赠。")
+        Exit Sub
+    End Sub
 End Class

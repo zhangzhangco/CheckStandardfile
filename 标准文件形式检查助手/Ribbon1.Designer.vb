@@ -67,6 +67,7 @@
         Me.DonateBtn = Me.Factory.CreateRibbonButton
         Me.SettingBtn = Me.Factory.CreateRibbonButton
         Me.AboutBtn = Me.Factory.CreateRibbonButton
+        Me.AIwriting = Me.Factory.CreateRibbonButton
         Me.Tab1.SuspendLayout()
         Me.Group1.SuspendLayout()
         Me.Group3.SuspendLayout()
@@ -229,6 +230,7 @@
         '
         Me.Group2.Items.Add(Me.SearchStdBtn)
         Me.Group2.Items.Add(Me.runBtn)
+        Me.Group2.Items.Add(Me.AIwriting)
         Me.Group2.Label = "尊享功能"
         Me.Group2.Name = "Group2"
         '
@@ -277,6 +279,13 @@
         Me.AboutBtn.Name = "AboutBtn"
         Me.AboutBtn.ShowImage = True
         '
+        'AIwriting
+        '
+        Me.AIwriting.Image = CType(resources.GetObject("AIwriting.Image"), System.Drawing.Image)
+        Me.AIwriting.Label = " AI 写作"
+        Me.AIwriting.Name = "AIwriting"
+        Me.AIwriting.ShowImage = True
+        '
         'Ribbon1
         '
         Me.Name = "Ribbon1"
@@ -321,6 +330,7 @@
     Friend WithEvents DonateBtn As Microsoft.Office.Tools.Ribbon.RibbonButton
     Friend WithEvents SettingBtn As Microsoft.Office.Tools.Ribbon.RibbonButton
     Friend WithEvents ApplyStyleBtn As Microsoft.Office.Tools.Ribbon.RibbonButton
+    Friend WithEvents AIwriting As Microsoft.Office.Tools.Ribbon.RibbonButton
 End Class
 
 Partial Class ThisRibbonCollection

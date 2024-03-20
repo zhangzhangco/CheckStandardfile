@@ -12,10 +12,10 @@
     <ROW Property="ARPCOMMENTS" Value="此 Installer 数据库包含了安装 [|ProductName] 所需的逻辑和数据。" ValueLocId="*"/>
     <ROW Property="ARPNOREPAIR" MultiBuildValue="DefaultBuild:1"/>
     <ROW Property="Manufacturer" Value="RelatonChina"/>
-    <ROW Property="ProductCode" Value="2052:{245D0DF8-70AC-4B02-B3CF-45E17B1CAD04} " Type="16"/>
+    <ROW Property="ProductCode" Value="2052:{48D89817-2C9E-4FF7-AB02-522CE6F83061} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="标准形式检查助手"/>
-    <ROW Property="ProductVersion" Value="0.0.1.2" Options="32"/>
+    <ROW Property="ProductVersion" Value="0.2.2.0" Options="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{52ED3F27-BC65-4720-8E16-E67C99F2EE6B}"/>
     <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
@@ -29,6 +29,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiDirsComponent">
     <ROW Directory="APPDIR" Directory_Parent="TARGETDIR" DefaultDir="APPDIR:." IsPseudoRoot="1"/>
+    <ROW Directory="StartMenuFolder" Directory_Parent="TARGETDIR" DefaultDir="STARTM~1|StartMenuFolder" IsPseudoRoot="1"/>
     <ROW Directory="TARGETDIR" DefaultDir="SourceDir"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
@@ -66,7 +67,7 @@
     <ROW File="exe" Component_="exe" FileName="更新.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="&lt;AI_STUBS&gt;updater.exe" SelfReg="false" DigSign="true"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BootstrOptComponent">
-    <ROW BootstrOptKey="GlobalOptions" DownloadFolder="[AppDataFolder][|Manufacturer]\[|ProductName]\prerequisites" Options="6" UpdatesUrl="http://8.146.200.130/downloads/update.txt"/>
+    <ROW BootstrOptKey="GlobalOptions" DownloadFolder="[AppDataFolder][|Manufacturer]\[|ProductName]\prerequisites" Options="2"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BootstrapperUISequenceComponent">
     <ROW Action="AI_DownloadPrereq" Condition="AI_BOOTSTRAPPER AND (NOT AI_PrereqsFulfilled)" Sequence="647"/>
@@ -116,11 +117,6 @@
     <ROW Action="AI_InstallPostPrerequisite" Description="正在安装运行环境软件" DescriptionLocId="ActionText.Description.AI_InstallPrerequisite" Template="[1]" TemplateLocId="ActionText.Template.AI_InstallPrerequisite"/>
     <ROW Action="AI_InstallPrePrerequisite" Description="正在安装运行环境软件" DescriptionLocId="ActionText.Description.AI_InstallPrerequisite" Template="[1]" TemplateLocId="ActionText.Template.AI_InstallPrerequisite"/>
     <ROW Action="AI_InstallPrerequisite" Description="正在安装运行环境软件" DescriptionLocId="ActionText.Description.AI_InstallPrerequisite" Template="[1]" TemplateLocId="ActionText.Template.AI_InstallPrerequisite"/>
-    <ROW Action="AI_ProcessTasks2" Description="正在生成在本地计算机上的任务计划操作:" DescriptionLocId="ActionText.Description.AI_ProcessTasks" Template="任务名: [1]" TemplateLocId="ActionText.Template.AI_ProcessTasks"/>
-    <ROW Action="AI_RemoveTasks2" Description="正在删除本地计算机上的任务计划" DescriptionLocId="ActionText.Description.AI_RemoveTasks" Template="任务名: [1]" TemplateLocId="ActionText.Template.AI_RemoveTasks"/>
-    <ROW Action="AI_RollbackTasks2" Description="正在回滚本地计算机上的任务计划" DescriptionLocId="ActionText.Description.AI_RollbackTasks" Template="任务名: [1]" TemplateLocId="ActionText.Template.AI_RollbackTasks"/>
-    <ROW Action="AI_ScheduleTasks2" Description="正在计划本地计算机上的任务" DescriptionLocId="ActionText.Description.AI_ScheduleTasks" Template="任务名: [1]" TemplateLocId="ActionText.Template.AI_ScheduleTasks"/>
-    <ROW Action="AI_UninstallTasks2" Description="正在生成从本地计算机删除任务计划的操作:" DescriptionLocId="ActionText.Description.AI_UninstallTasks"/>
     <ROW Action="AI_VerifyPrePrereq" Description="正在验证运行环境" DescriptionLocId="ActionText.Description.AI_VerifyPrereq" Template="[1] 没有被正确安装." TemplateLocId="ActionText.Template.AI_VerifyPrereq"/>
     <ROW Action="AI_VerifyPrereq" Description="正在验证运行环境" DescriptionLocId="ActionText.Description.AI_VerifyPrereq" Template="[1] 没有被正确安装." TemplateLocId="ActionText.Template.AI_VerifyPrereq"/>
   </COMPONENT>
@@ -133,7 +129,6 @@
     <ROW Name="SoftwareDetector.dll" SourcePath="&lt;AI_CUSTACTS&gt;SoftwareDetector.dll"/>
     <ROW Name="aicustact.dll" SourcePath="&lt;AI_CUSTACTS&gt;aicustact.dll"/>
     <ROW Name="aipackagechainer.exe" SourcePath="&lt;AI_CUSTACTS&gt;aipackagechainer.exe" DigSign="true"/>
-    <ROW Name="aischeduler2.dll" SourcePath="&lt;AI_CUSTACTS&gt;aischeduler2.dll"/>
     <ROW Name="file_deleter.ps1" SourcePath="&lt;AI_SCRIPTS&gt;file_deleter.ps1"/>
     <ROW Name="lzmaextractor.dll" SourcePath="&lt;AI_CUSTACTS&gt;lzmaextractor.dll"/>
   </COMPONENT>
@@ -203,19 +198,14 @@
     <ROW Action="AI_LaunchChainer" Type="3314" Source="AI_PREREQ_CHAINER"/>
     <ROW Action="AI_PREPARE_UPGRADE" Type="65" Source="aicustact.dll" Target="PrepareUpgrade"/>
     <ROW Action="AI_PRESERVE_INSTALL_TYPE" Type="65" Source="aicustact.dll" Target="PreserveInstallType"/>
-    <ROW Action="AI_ProcessTasks2" Type="1" Source="aischeduler2.dll" Target="ProcessTasks"/>
     <ROW Action="AI_RESTORE_AI_SETUPEXEPATH" Type="51" Source="AI_SETUPEXEPATH" Target="[AI_SETUPEXEPATH_ORIGINAL]"/>
     <ROW Action="AI_RESTORE_LOCATION" Type="65" Source="aicustact.dll" Target="RestoreLocation"/>
-    <ROW Action="AI_RemoveTasks2" Type="11265" Source="aischeduler2.dll" Target="DeleteTasks" WithoutSeq="true"/>
     <ROW Action="AI_ResolveKnownFolders" Type="1" Source="aicustact.dll" Target="AI_ResolveKnownFolders"/>
     <ROW Action="AI_RollbackPrePrereq" Type="65" Source="Prereq.dll" Target="RollbackPrePrereq" WithoutSeq="true"/>
     <ROW Action="AI_RollbackPrereq" Type="65" Source="Prereq.dll" Target="RollbackPrereq" WithoutSeq="true"/>
-    <ROW Action="AI_RollbackTasks2" Type="11521" Source="aischeduler2.dll" Target="DeleteTasks" WithoutSeq="true"/>
     <ROW Action="AI_SHOW_LOG" Type="65" Source="aicustact.dll" Target="LaunchLogFile" WithoutSeq="true"/>
     <ROW Action="AI_STORE_LOCATION" Type="51" Source="ARPINSTALLLOCATION" Target="[APPDIR]"/>
-    <ROW Action="AI_ScheduleTasks2" Type="11265" Source="aischeduler2.dll" Target="ScheduleTasks" WithoutSeq="true"/>
     <ROW Action="AI_UPDATER_UNINSTALL" Type="82" Source="exe" Target="/clean silent"/>
-    <ROW Action="AI_UninstallTasks2" Type="1" Source="aischeduler2.dll" Target="UninstallTasks"/>
     <ROW Action="AI_VerifyPrePrereq" Type="1" Source="Prereq.dll" Target="VerifyPrePrereq"/>
     <ROW Action="AI_VerifyPrereq" Type="1" Source="Prereq.dll" Target="VerifyPrereq"/>
     <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[AppDataFolder][Manufacturer]\[ProductName]"/>
@@ -252,7 +242,7 @@
     <ROW IniFile="DownloadsFolder" FileName="更新.ini" DirProperty="APPDIR" Section="General" Key="DownloadsFolder" Value="[AppDataFolder][Manufacturer]\[ProductName]\updates\" Action="0" Component_="exe"/>
     <ROW IniFile="Flags" FileName="更新.ini" DirProperty="APPDIR" Section="General" Key="Flags" Value="ShowConfigOptionsButton" Action="0" Component_="exe"/>
     <ROW IniFile="ID" FileName="更新.ini" DirProperty="APPDIR" Section="General" Key="ID" Value="[UpgradeCode]" Action="0" Component_="exe"/>
-    <ROW IniFile="URL" FileName="更新.ini" DirProperty="APPDIR" Section="General" Key="URL" Value="http://8.146.200.130/downloads/update.txt" Action="0" Component_="exe"/>
+    <ROW IniFile="URL" FileName="更新.ini" DirProperty="APPDIR" Section="General" Key="URL" Value="http://api.relaton.top/downloads/update.txt" Action="0" Component_="exe"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstExSeqComponent">
     <ROW Action="AI_DOWNGRADE" Condition="AI_NEWERPRODUCTFOUND AND (UILevel &lt;&gt; 5)" Sequence="210"/>
@@ -278,8 +268,6 @@
     <ROW Action="AI_ConfigureChainer" Condition="(NOT SETUPEXEDIR) AND ((UILevel = 2) OR (UILevel = 3)) AND (NOT UPGRADINGPRODUCTCODE)" Sequence="6598"/>
     <ROW Action="AI_LaunchChainer" Condition="AI_PREREQ_CHAINER AND (NOT UPGRADINGPRODUCTCODE)" Sequence="6599"/>
     <ROW Action="AI_UPDATER_UNINSTALL" Condition="($exe = 2) AND (?exe = 3) AND NOT (UPGRADINGPRODUCTCODE)" Sequence="1551"/>
-    <ROW Action="AI_ProcessTasks2" Condition="(VersionNT &gt;= 600) AND (REMOVE&lt;&gt;&quot;ALL&quot;)" Sequence="1624"/>
-    <ROW Action="AI_UninstallTasks2" Condition="(VersionNT &gt;= 600) AND (REMOVE=&quot;ALL&quot;)" Sequence="1699"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
     <ROW Action="AI_PRESERVE_INSTALL_TYPE" Sequence="199"/>
@@ -347,6 +335,9 @@
     <ROW Registry="WPS" Root="1" Key="Software\Kingsoft\Office\WPS" Name="+" Component_="WPS"/>
     <ROW Registry="Word" Root="-1" Key="Software\Microsoft\Office\Word" Name="\"/>
   </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiShortsComponent">
+    <ROW Shortcut="ProductName" Directory_="StartMenuFolder" Name="更新-标准形~1|更新-[|ProductName]" Component_="exe" Target="[#exe]" Hotkey="0" IconIndex="0" ShowCmd="1" WkDir="APPDIR"/>
+  </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiThemeComponent">
     <ATTRIBUTE name="UsedTheme" value="classic"/>
   </COMPONENT>
@@ -363,10 +354,7 @@
     <ROW SearchKey="ABA121137E454F6C815A1647D0B2CF14Version" Prereq="ABA121137E454F6C815A1647D0B2CF14" SearchType="2" SearchString="HKLM\SOFTWARE\Microsoft\VSTO Runtime Setup\v4R\Version" VerMin="10.0.60828" Order="1" Property="PreReqSearch_ABA121137E454F6C815A16"/>
     <ROW SearchKey="B8AA522D638C46D9A84AE3AEFBE7A086Release" Prereq="B8AA522D638C46D9A84AE3AEFBE7A086" SearchType="9" SearchString="HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full\Release" RefContent="G461309" Order="1" Property="PreReqSearch_B8AA522D638C46D9A84AE3"/>
   </COMPONENT>
-  <COMPONENT cid="caphyon.advinst.msicomp.ScheduledTasksComponent">
-    <ROW TaskId="AI_" TaskName="更新" Run="[#exe]" WorkDir="[APPDIR]" UserProp="[%UserDomain]\[LogonUser]" Flags="8192" Trigger="1|1|1|1|0|0|0||0|0|0" Settings="2|0" Condition="1" TaskVersion="2.0"/>
-  </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.UpdaterComponent">
-    <ROW Updater="exe" URL="URL" SearchFreq="CheckFrequency" DownloadsFolder="DownloadsFolder" ID="ID" TargetDir="AppDir" AppName="ApplicationName" AppVersion="ApplicationVersion" CompanyName="CompanyName" DefCommandLine="DefaultCommandLine" Flags="Flags" IconIndex="0" UnistallCASeq="AI_UPDATER_UNINSTALL" TaskId="AI_" Description="[|UpdaterName] [|ProductVersion]"/>
+    <ROW Updater="exe" URL="URL" SearchFreq="CheckFrequency" DownloadsFolder="DownloadsFolder" ID="ID" TargetDir="AppDir" AppName="ApplicationName" AppVersion="ApplicationVersion" CompanyName="CompanyName" DefCommandLine="DefaultCommandLine" Flags="Flags" IconIndex="0" UnistallCASeq="AI_UPDATER_UNINSTALL" Description="[|UpdaterName] [|ProductVersion]"/>
   </COMPONENT>
 </DOCUMENT>
