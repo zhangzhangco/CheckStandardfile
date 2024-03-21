@@ -30,6 +30,11 @@
 4. 根据提示修正文档中的问题。
 5. 使用“一键懒人”功能，快速完成标准化处理。
 
+![引用文件格式修正和标准查询](https://github.com/zhangzhangco/CheckStandardfile/assets/5515762/7e386dbd-ea04-416f-8bd8-c40cead79369)
+
+
+![使用AI大模型处理段落](https://github.com/zhangzhangco/CheckStandardfile/assets/5515762/1e0740fd-7e60-4893-827b-31bf09acd8bb)
+
 ## 完成情况
 | 检查项目 | 检查内容 | 完成情况 |
 | :---: | :--- | :---: |
