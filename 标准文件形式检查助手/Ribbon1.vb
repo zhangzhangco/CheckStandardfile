@@ -19,6 +19,8 @@ Imports System.Security.Cryptography
 Imports Microsoft.Office.Core
 Imports Newtonsoft.Json
 Imports System.Windows.Input
+Imports Microsoft.Win32
+Imports Microsoft.SqlServer
 
 Public Class Ribbon1
     Private currentDoc As Word.Document
@@ -27,27 +29,44 @@ Public Class Ribbon1
     ' 获取当前Word应用程序和活动文档的引用
     Dim wordApp As Microsoft.Office.Interop.Word.Application ' = Globals.ThisAddIn.Application
     ' 创建ProgressHandler实例，用于管理进度条
-    Dim progressHandler As New ProgressHandler()
+    Public Shared progressHandler As ProgressHandler = New ProgressHandler()
     Public Property originalDocPath As String
     Public Property tempPathOriginal As String
     Public Property tempPathModified As String
-    Public Property LicenseKey As String
-    Public Property Llm As String
-    Public Property LlmKey As String
+    Public Shared Property LicenseKey As String
+    Public Shared Property Llm As String
+    Public Shared Property LlmKey As String
     Public Property IsVip As Boolean = False
-    Public Shared ReadOnly InstalledPath = Environment.GetEnvironmentVariable("APPDATA") & "\RelatonChina\标准形式检查助手\"
+    Public Shared InstalledPath = Environment.GetEnvironmentVariable("APPDATA") & "\RelatonChina\标准形式检查助手\"
     Public Shared ReadOnly IniPath = InstalledPath & "setting.ini"
     Public Shared ReadOnly StylePath = InstalledPath & "行业标准.dotx"
     Public Shared ReadOnly UpdaterPath = InstalledPath & "更新.exe"
 
     Private Sub Ribbon1_Load(ByVal sender As System.Object, ByVal e As RibbonUIEventArgs) Handles MyBase.Load
         wordApp = Globals.ThisAddIn.Application
+        ' 尝试获取注册表中的Path值，如果未找到，则使用默认路径
+        InstalledPath = GetRegistryPathOrDefault("SOFTWARE\RelatonChina\标准形式检查助手", "Path", InstalledPath)
         LoadSettings()
     End Sub
+    Function GetRegistryPathOrDefault(ByVal regPath As String, ByVal keyName As String, ByVal defaultValue As String) As String
+        ' 打开指定路径的注册表项
+        Using regKey As RegistryKey = Registry.CurrentUser.OpenSubKey(regPath)
+            ' 检查注册表项是否存在
+            If regKey IsNot Nothing Then
+                ' 尝试读取键的值
+                Dim keyValue As Object = regKey.GetValue(keyName)
 
+                ' 如果键的值存在，则返回这个值，否则返回默认值
+                Return If(keyValue IsNot Nothing, keyValue.ToString(), defaultValue)
+            Else
+                ' 如果路径不存在，返回默认值
+                Return defaultValue
+            End If
+        End Using
+    End Function
     Private Sub About_Click(sender As Object, e As RibbonControlEventArgs) Handles AboutBtn.Click
         Dim aboutMessage As String = "形式检查助手" & Environment.NewLine
-        aboutMessage &= "版本: 0.2.2" & Environment.NewLine
+        aboutMessage &= "版本: 0.3.1" & Environment.NewLine
         aboutMessage &= "WeChat：HelloLLM2035" & Environment.NewLine
         aboutMessage &= "用于辅助进行标准形式检查和编制的小工具。"
 
@@ -1498,33 +1517,62 @@ NextParagraphDangling:
         End If
         Dim introStarted As Boolean = False
         Dim introEnded As Boolean = False
+
+
         progressHandler.ProgressStartWaiting()
+
+        Dim modelInterface As IModelInterface = ModelInterfaceFactory.CreateModelInterface()
+        Dim modelConfig As New ModelConfig()
+
         For Each para In currentDoc.Paragraphs
-            Dim paraStyle As String = para.Style.NameLocal
-            Dim paraText As String = para.Range.Text
+            Try
+                If Not para.Range Is Nothing AndAlso Not para.Style Is Nothing Then
+                    Dim paraStyle As String = para.Style.NameLocal
+                    Dim paraText As String = para.Range.Text.Trim()
 
-            ' 检查引言部分的开始
-            If paraStyle = "标准文件_前言、引言标题" And paraText.Contains("引言") Then
-                introStarted = True
-                introEnded = False
-            End If
+                    If String.IsNullOrEmpty(paraText) Then
+                        Continue For
+                    End If
 
-            ' 检查引言部分的结束
-            If paraStyle = "标准文件_正文标准名称" Then
-                introEnded = True
-            End If
+                    If paraStyle = "标准文件_前言、引言标题" And paraText.Contains("引言") Then
+                        introStarted = True
+                        introEnded = False
+                    End If
 
-            ' 在引言部分中检查是否包含不允许的词汇
-            If introStarted And Not introEnded Then
-                If paraText.Contains("应") Or paraText.Contains("不应") Then
-                    ' 在有问题的引言标题上添加批注
-                    currentDoc.Comments.Add(para.Range, "可能存在要求性的表述。")
-                    Exit For ' 找到第一个实例后停止检查
+                    If paraStyle = "标准文件_正文标准名称" Then
+                        introEnded = True
+                        Exit For
+                    End If
+
+                    If introStarted And Not introEnded AndAlso SecurityManager.IsRequestValid(paraText) Then
+                        If IsVip AndAlso Not String.IsNullOrEmpty(Llm) AndAlso Not String.IsNullOrEmpty(LlmKey) Then
+                            Dim preprocessedText = TextProcessor.PreProcess(paraText)
+                            Dim analysisResult As Boolean = modelInterface.CheckRequirements(preprocessedText, modelConfig)
+
+                            If analysisResult AndAlso paraStyle.ToString.Contains("段") Then
+                                'para.Range.Comments.Add(para.Range, "可能存在要求性的表述。")
+                                Dim comment As Word.Comment = currentDoc.Comments.Add(Range:=para.Range, Text:="可能存在要求性的表述。")
+                                ' 设置批注人
+                                comment.Author = "AI大模型" 'modelConfig.ModelId
+                                comment.Initial = modelConfig.ModelId
+                            End If
+                        Else
+                            If paraText.Contains("应") Or paraText.Contains("不应") Then
+                                ' 在有问题的引言标题上添加批注
+                                currentDoc.Comments.Add(para.Range, "可能存在要求性的表述。")
+                                Exit For ' 找到第一个实例后停止检查
+                            End If
+                        End If
+                    End If
                 End If
-            End If
+            Catch ex As Exception
+                'MsgBox(ex.ToString)
+            End Try
         Next
         progressHandler.ProgressEnd()
     End Sub
+
+
 
     Private Sub AbbChk_Click(sender As Object, e As RibbonControlEventArgs) Handles AbbChkBtn.Click
         If wordApp.Documents.Count > 0 Then

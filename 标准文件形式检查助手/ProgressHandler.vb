@@ -6,11 +6,7 @@ Imports System.IO
 Imports Microsoft.Office.Interop.Word
 
 Public Class ProgressHandler
-    Private progressForm As ProgressForm
-
-    Public Sub New()
-        Me.progressForm = New ProgressForm()
-    End Sub
+    Public Shared progressForm As ProgressForm = New ProgressForm()
 
     Public Sub ProgressStart()
         ' 初始化进度表单

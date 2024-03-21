@@ -63,11 +63,11 @@
         Me.Group2 = Me.Factory.CreateRibbonGroup
         Me.SearchStdBtn = Me.Factory.CreateRibbonButton
         Me.runBtn = Me.Factory.CreateRibbonButton
+        Me.AIwriting = Me.Factory.CreateRibbonButton
         Me.Group4 = Me.Factory.CreateRibbonGroup
         Me.DonateBtn = Me.Factory.CreateRibbonButton
         Me.SettingBtn = Me.Factory.CreateRibbonButton
         Me.AboutBtn = Me.Factory.CreateRibbonButton
-        Me.AIwriting = Me.Factory.CreateRibbonButton
         Me.Tab1.SuspendLayout()
         Me.Group1.SuspendLayout()
         Me.Group3.SuspendLayout()
@@ -250,6 +250,13 @@
         Me.runBtn.ShowImage = True
         Me.runBtn.SuperTip = "一键自动完成"
         '
+        'AIwriting
+        '
+        Me.AIwriting.Image = CType(resources.GetObject("AIwriting.Image"), System.Drawing.Image)
+        Me.AIwriting.Label = " AI 写作"
+        Me.AIwriting.Name = "AIwriting"
+        Me.AIwriting.ShowImage = True
+        '
         'Group4
         '
         Me.Group4.Items.Add(Me.DonateBtn)
@@ -278,13 +285,6 @@
         Me.AboutBtn.Label = "关于"
         Me.AboutBtn.Name = "AboutBtn"
         Me.AboutBtn.ShowImage = True
-        '
-        'AIwriting
-        '
-        Me.AIwriting.Image = CType(resources.GetObject("AIwriting.Image"), System.Drawing.Image)
-        Me.AIwriting.Label = " AI 写作"
-        Me.AIwriting.Name = "AIwriting"
-        Me.AIwriting.ShowImage = True
         '
         'Ribbon1
         '

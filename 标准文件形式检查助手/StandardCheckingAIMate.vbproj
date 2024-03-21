@@ -218,6 +218,11 @@
     <Compile Include="DonateForm.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="IModelInterface.vb" />
+    <Compile Include="ModelConfig.vb" />
+    <Compile Include="ModelInterfaceFactory.vb" />
+    <Compile Include="OpenAIModelInterface.vb" />
+    <Compile Include="SecurityManager.vb" />
     <Compile Include="SettingForm.vb">
       <SubType>Form</SubType>
     </Compile>
@@ -237,6 +242,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="StandardDocument.vb" />
+    <Compile Include="TextProcessor.vb" />
     <Compile Include="ThisAddIn.vb">
       <SubType>Code</SubType>
     </Compile>

@@ -245,7 +245,7 @@ Public Class SettingForm
     Private Sub LoadSettings()
         ' 获取当前执行的DLL的目录
         Dim assemblyPath As String = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-        Dim filePath As String = Path.Combine(assemblyPath, Ribbon1.StylePath)
+        Dim filePath As String = Path.Combine(assemblyPath, Ribbon1.IniPath)
 
         If File.Exists(filePath) Then
             ' 文件存在时，加载设置
@@ -279,4 +279,24 @@ Public Class SettingForm
     Private Sub update_Click(sender As Object, e As EventArgs) Handles update.Click
         Dim process1 As Process = Process.Start(Ribbon1.UpdaterPath, "/checknow")
     End Sub
+
+    Private Function TstLlmBtn_ClickAsync(sender As Object, e As EventArgs) As Task Handles TstLlmBtn.Click
+        Dim apiSelection As String = LlmCB.SelectedItem.ToString()
+        Dim apiKey As String = LlmKeyTB.Text
+
+        Dim modelInterface As IModelInterface
+        If apiSelection = "OpenAI" Then
+            modelInterface = New OpenAIModelInterface()
+        Else
+            ' modelInterface = New ZhiPuModelInterface() ' 假设这是智普接口的实现
+        End If
+
+        Dim config As New ModelConfig(apiSelection, apiKey)
+        Dim isSuccess As Boolean = modelInterface.TestApiKey(config)
+        If isSuccess Then
+            Forms.MessageBox.Show("API key有效。", "测试成功", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        Else
+            Forms.MessageBox.Show("API key无效，请检查。", "测试失败", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End If
+    End Function
 End Class

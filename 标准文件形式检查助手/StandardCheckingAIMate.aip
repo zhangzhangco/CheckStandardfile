@@ -12,10 +12,10 @@
     <ROW Property="ARPCOMMENTS" Value="此 Installer 数据库包含了安装 [|ProductName] 所需的逻辑和数据。" ValueLocId="*"/>
     <ROW Property="ARPNOREPAIR" MultiBuildValue="DefaultBuild:1"/>
     <ROW Property="Manufacturer" Value="RelatonChina"/>
-    <ROW Property="ProductCode" Value="2052:{48D89817-2C9E-4FF7-AB02-522CE6F83061} " Type="16"/>
+    <ROW Property="ProductCode" Value="2052:{7ADA2C67-7FC6-453A-A68B-DE28B3517E9E} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="标准形式检查助手"/>
-    <ROW Property="ProductVersion" Value="0.2.2.0" Options="32"/>
+    <ROW Property="ProductVersion" Value="0.2.3.0" Options="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{52ED3F27-BC65-4720-8E16-E67C99F2EE6B}"/>
     <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
@@ -62,7 +62,6 @@
     <ROW File="Newtonsoft.Json.dll" Component_="Newtonsoft.Json.dll" FileName="NEWTON~1.DLL|Newtonsoft.Json.dll" Attributes="0" SourcePath="bin\Release\Newtonsoft.Json.dll" SelfReg="false"/>
     <ROW File="dll" Component_="dll" FileName="标准文件形式~1.DLL|标准文件形式检查助手.dll" Attributes="0" SourcePath="bin\Release\标准文件形式检查助手.dll" SelfReg="false"/>
     <ROW File="dll.manifest" Component_="dll.manifest" FileName="标准文件形式~1.MAN|标准文件形式检查助手.dll.manifest" Attributes="0" SourcePath="bin\Release\标准文件形式检查助手.dll.manifest" SelfReg="false"/>
-    <ROW File="vsto" Component_="dll.manifest" FileName="标准文件形式~1.VST|标准文件形式检查助手.vsto" Attributes="0" SourcePath="bin\Release\标准文件形式检查助手.vsto" SelfReg="false"/>
     <ROW File="dotx" Component_="dll.manifest" FileName="行业标准~1.DOT|行业标准.dotx" Attributes="0" SourcePath="bin\Release\行业标准.dotx" SelfReg="false"/>
     <ROW File="exe" Component_="exe" FileName="更新.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="&lt;AI_STUBS&gt;updater.exe" SelfReg="false" DigSign="true"/>
   </COMPONENT>
