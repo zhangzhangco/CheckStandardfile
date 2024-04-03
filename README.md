@@ -35,6 +35,8 @@
 
 ![使用AI大模型处理段落](https://github.com/zhangzhangco/CheckStandardfile/assets/5515762/1e0740fd-7e60-4893-827b-31bf09acd8bb)
 
+![使用AI大模型辅助编写](https://github.com/zhangzhangco/CheckStandardfile/assets/5515762/bff0ebf9-aa0d-4dbe-9a2e-3d2e9db78310)
+
 ## 完成情况
 | 检查项目 | 检查内容 | 完成情况 |
 | :---: | :--- | :---: |
