@@ -5,8 +5,8 @@
 
     ' 修改构造函数，使其能够使用全局变量
     Public Sub New()
-        Me.ApiKey = Ribbon1.LlmKey
-        Me.ModelId = Ribbon1.Llm
+        Me.ApiKey = Ribbon.LlmKey
+        Me.ModelId = Ribbon.Llm
         Parameters = New Dictionary(Of String, Object)()
     End Sub
     Public Sub New(apiSelection As String, apiKey As String)

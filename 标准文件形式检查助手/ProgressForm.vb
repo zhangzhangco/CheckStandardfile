@@ -20,7 +20,7 @@ Public Class ProgressForm
         ProgressLabel1.Text = value
     End Sub
 
-    Private Sub InitializeComponent()
+    Public Sub InitializeComponent()
         Me.ProgressBar1 = New System.Windows.Forms.ProgressBar()
         Me.ProgressLabel1 = New System.Windows.Forms.Label()
         Me.SuspendLayout()

@@ -1,9 +1,28 @@
-﻿Imports System.Drawing
+﻿'TODO:   按照以下步骤启用功能区(XML)项:
+
+'1. 将以下代码块复制到 ThisAddin、ThisWorkbook 或 ThisDocument 类中。
+
+'Protected Overrides Function CreateRibbonExtensibilityObject() As Microsoft.Office.Core.IRibbonExtensibility
+'    Return New Ribbon()
+'End Function
+
+'2. 在此类的“功能区回调”区域中创建回调方法，以处理用户
+'   操作(例如单击按钮)。注意: 如果已经从功能区设计器中导出此功能区，
+'   请将代码从事件处理程序移动到回调方法，并
+'   修改该代码以使用功能区扩展性(RibbonX)编程模型。
+
+'3. 向功能区 XML 文件中的控制标记分配特性，以标识代码中的相应回调方法。
+
+'有关详细信息，请参见 Visual Studio Tools for Office 帮助中的功能区 XML 文档。
+
+Imports Microsoft.Office.Core
+Imports stdole
+Imports System.Drawing
 Imports System.Net.Http
+Imports System.Windows.Forms
 Imports System.Reflection
 Imports System.Text.RegularExpressions
 Imports System.Windows.Controls
-Imports System.Windows.Forms
 Imports Microsoft.Office.Interop.Word
 Imports Microsoft.Office.Tools.Ribbon
 Imports System.Threading.Tasks
@@ -16,13 +35,15 @@ Imports Microsoft.Office
 Imports System.Diagnostics.Eventing.Reader
 Imports System.IO
 Imports System.Security.Cryptography
-Imports Microsoft.Office.Core
 Imports Newtonsoft.Json
 Imports System.Windows.Input
 Imports Microsoft.Win32
-Imports Microsoft.SqlServer
 
-Public Class Ribbon1
+<Runtime.InteropServices.ComVisible(True)>
+Public Class Ribbon
+    Implements Office.IRibbonExtensibility
+
+    Private ribbon As Office.IRibbonUI
     Private currentDoc As Word.Document
     ' 使用静态HttpClient实例以提高效率和资源复用
     Public Shared ReadOnly HttpClientInstance As New HttpClient()
@@ -42,12 +63,38 @@ Public Class Ribbon1
     Public Shared ReadOnly StylePath = InstalledPath & "行业标准.dotx"
     Public Shared ReadOnly UpdaterPath = InstalledPath & "更新.exe"
 
-    Private Sub Ribbon1_Load(ByVal sender As System.Object, ByVal e As RibbonUIEventArgs) Handles MyBase.Load
+    Public Sub New()
+    End Sub
+
+    Public Function GetCustomUI(ByVal ribbonID As String) As String Implements Office.IRibbonExtensibility.GetCustomUI
+        Return GetResourceText("标准文件形式检查助手.Ribbon.xml")
+    End Function
+    ' 加载并返回按钮图标
+    ' 图标加载回调
+    Public Function GetButtonImage(control As Office.IRibbonControl) As stdole.IPictureDisp
+        ' 根据您的描述，图标资源的命名模式是 MyButton.image
+        Dim iconName As String = control.Id & ".Image" ' 使用控件ID和".image"后缀拼接
+        Dim icon As Object = My.Resources.MyResources.ResourceManager.GetObject(iconName, Globalization.CultureInfo.CurrentUICulture)
+        If icon IsNot Nothing AndAlso TypeOf icon Is Drawing.Bitmap Then
+            ' 如果成功找到图标且为Bitmap类型，使用RibbonHelpers类转换并返回
+            Return RibbonHelpers.ImageToPictureDisp(CType(icon, Drawing.Bitmap))
+        Else
+            ' 如果找不到图标，可以返回一个默认图标或者Nothing
+            Return Nothing
+        End If
+    End Function
+
+
+#Region "功能区回调"
+    '在此处创建回叫方法。有关添加回叫方法的详细信息，请访问 https://go.microsoft.com/fwlink/?LinkID=271226
+    Public Sub Ribbon_Load(ByVal ribbonUI As Office.IRibbonUI)
+        Me.ribbon = ribbonUI
         wordApp = Globals.ThisAddIn.Application
         ' 尝试获取注册表中的Path值，如果未找到，则使用默认路径
         InstalledPath = GetRegistryPathOrDefault("SOFTWARE\RelatonChina\标准形式检查助手", "Path", InstalledPath)
         LoadSettings()
     End Sub
+
     Function GetRegistryPathOrDefault(ByVal regPath As String, ByVal keyName As String, ByVal defaultValue As String) As String
         ' 打开指定路径的注册表项
         Using regKey As RegistryKey = Registry.CurrentUser.OpenSubKey(regPath)
@@ -64,16 +111,16 @@ Public Class Ribbon1
             End If
         End Using
     End Function
-    Private Sub About_Click(sender As Object, e As RibbonControlEventArgs) Handles AboutBtn.Click
+    Public Sub About_Click(ByVal control As IRibbonControl)
         Dim aboutMessage As String = "形式检查助手" & Environment.NewLine
-        aboutMessage &= "版本: 0.3.1" & Environment.NewLine
+        aboutMessage &= "版本: 0.4.1" & Environment.NewLine
         aboutMessage &= "WeChat：HelloLLM2035" & Environment.NewLine
         aboutMessage &= "用于辅助进行标准形式检查和编制的小工具。"
 
         MessageBox.Show(aboutMessage, "关于", MessageBoxButtons.OK, MessageBoxIcon.Information)
     End Sub
 
-    Private Sub StructureChk_Click(sender As Object, e As RibbonControlEventArgs) Handles StructureChkBtn.Click
+    Public Sub StructureChk_Click(ByVal control As IRibbonControl)
         Dim para As Paragraph
         Dim nextPara As Word.Paragraph
         Dim currentLevel As Integer
@@ -215,7 +262,7 @@ Public Class Ribbon1
         IsSubLevel = (GetLevel(para.Style.NameLocal) = currentLevel + 1)
     End Function
 
-    Private Sub BibValid_Click(sender As Object, e As RibbonControlEventArgs) Handles BibValidBtn.Click
+    Public Sub BibValid_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -223,7 +270,7 @@ Public Class Ribbon1
             Exit Sub
         End If
         ' 开启当前文档的修订模式
-        'If (sender Is Nothing) Then
+        'If (control Is Nothing) Then
         '    currentDoc.TrackRevisions = False
         'Else
         '    DecryptDoc(currentDoc)
@@ -314,7 +361,7 @@ Public Class Ribbon1
                 If Trim(arrFileNames(j)) <> "" AndAlso insertPoint IsNot Nothing Then
                     Dim stdfilename = arrFileNames(j)
                     '尊享模式才有
-                    If (sender Is Nothing) Then
+                    If (control Is Nothing) Then
                         '构建类，拆解文件名，得到标准编号和标准名称
                         Dim stddoc = New StandardDocument(stdfilename)
                         Dim output As String
@@ -350,7 +397,7 @@ Public Class Ribbon1
                 End If
             Next j
         Else
-            If Not sender Is Nothing Then
+            If Not control Is Nothing Then
                 MsgBox("未找到'规范性引用文件'章节，您可能未使用SET 2020编写此文件。")
             End If
             '批注缺少章节
@@ -358,7 +405,7 @@ Public Class Ribbon1
         End If
         progressHandler.ProgressEnd()
     End Sub
-    Private Sub missingBib(doc As Document)
+    Public Sub missingBib(doc As Document)
         ' 遍历文档中的每个段落
         For Each para As Word.Paragraph In doc.Paragraphs
             ' 检查段落的样式名称和内容
@@ -387,7 +434,7 @@ Public Class Ribbon1
         Return order.Length - 1 ' 如果没有匹配项，返回最后一个索引
     End Function
 
-    Private Sub TermsChk_Click(sender As Object, e As RibbonControlEventArgs) Handles TermsChkBtn.Click
+    Public Sub TermsChk_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -487,7 +534,7 @@ Public Class Ribbon1
             Return String.Empty ' 如果没有匹配到，则返回空字符串
         End If
     End Function
-    Private Sub ReplaceWithQuanjiaoAndConditionallyLowercase(para As Word.Paragraph)
+    Public Sub ReplaceWithQuanjiaoAndConditionallyLowercase(para As Word.Paragraph)
         If para Is Nothing Then Exit Sub
         If Not String.IsNullOrWhiteSpace(para.Range.Text.Trim) Then
             Dim range As Word.Range = para.Range
@@ -531,7 +578,7 @@ Public Class Ribbon1
         End If
     End Sub
 
-    Private Sub UpdateParagraphStylesInDocument()
+    Public Sub UpdateParagraphStylesInDocument()
         Dim para As Word.Paragraph
         Dim checkParagraphs As Boolean
         Dim updated As Boolean
@@ -561,7 +608,7 @@ Public Class Ribbon1
         Next para
     End Sub
 
-    Private Sub BibRefChk_Click(sender As Object, e As RibbonControlEventArgs) Handles BibRefChkBtn.Click
+    Public Sub BibRefChk_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -620,7 +667,7 @@ Public Class Ribbon1
         extracteChapterText = extractedText
     End Function
 
-    Private Sub ProcessParagraphs(doc As Word.Document, regEx As Regex, reftext As String)
+    Public Sub ProcessParagraphs(doc As Word.Document, regEx As Regex, reftext As String)
         Dim para As Word.Paragraph
         Dim skip As Boolean
         skip = True
@@ -638,7 +685,7 @@ NextParagraphDangling:
         Next para
     End Sub
 
-    Private Sub ProcessTables(doc As Word.Document, regEx As Regex, reftext As String)
+    Public Sub ProcessTables(doc As Word.Document, regEx As Regex, reftext As String)
         Dim tbl As Word.Table
         Dim cell As Word.Cell
         For Each tbl In doc.Tables
@@ -648,7 +695,7 @@ NextParagraphDangling:
         Next tbl
     End Sub
 
-    Private Sub ProcessText(regEx As Regex, rng As Word.Range, reftext As String)
+    Public Sub ProcessText(regEx As Regex, rng As Word.Range, reftext As String)
         Dim matches As MatchCollection
         matches = regEx.Matches(rng.Text)
 
@@ -700,7 +747,7 @@ NextParagraphDangling:
         Return isPrefixValid
     End Function
 
-    Private Sub BignumMdf_Click(sender As Object, e As RibbonControlEventArgs) Handles BignumMdfBtn.Click
+    Public Sub BignumMdf_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -744,7 +791,7 @@ NextParagraphDangling:
         Return integerPart + decimalPart
     End Function
 
-    Private Sub UnitMdf_Click(sender As Object, e As RibbonControlEventArgs) Handles UnitMdfBtn.Click
+    Public Sub UnitMdf_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -952,7 +999,7 @@ NextParagraphDangling:
         wordApp.ActiveWindow.View.ShowRevisionsAndComments = originalShowRevisions
     End Sub
 
-    Private Sub ReplaceTextWithSuperscript(doc As Word.Document, searchText As String, baseText As String, superText As String)
+    Public Sub ReplaceTextWithSuperscript(doc As Word.Document, searchText As String, baseText As String, superText As String)
         Dim rng As Word.Range = doc.Content
 
         rng.Find.ClearFormatting()
@@ -974,12 +1021,12 @@ NextParagraphDangling:
         End While
     End Sub
 
-    Private Sub BeautifyTbl_Click(sender As Object, e As RibbonControlEventArgs) Handles BeautifyTblBtn.Click
+    Public Sub BeautifyTbl_Click(ByVal control As IRibbonControl)
         progressHandler.ProgressStart()
-        RenewAllTableFormats(sender)
+        RenewAllTableFormats(control)
         progressHandler.ProgressEnd()
     End Sub
-    Private Sub RenewAllTableFormats(sender As Object)
+    Public Sub RenewAllTableFormats(control As Object)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -988,7 +1035,7 @@ NextParagraphDangling:
         End If
         Dim tableCount As Integer = currentDoc.Tables.Count
 
-        If Not sender Is Nothing AndAlso tableCount = 0 Then
+        If Not control Is Nothing AndAlso tableCount = 0 Then
             MessageBox.Show("文档中没有表格。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         End If
@@ -1006,7 +1053,7 @@ NextParagraphDangling:
                 End Try
             End If
         Next
-        If Not sender Is Nothing Then
+        If Not control Is Nothing Then
             MessageBox.Show("所有表格格式已更新。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
         End If
     End Sub
@@ -1019,7 +1066,7 @@ NextParagraphDangling:
         Next
         Return True
     End Function
-    Private Sub ResetTable(ByVal table As Object)
+    Public Sub ResetTable(ByVal table As Object)
         Dim borderTypes As WdBorderType() = {WdBorderType.wdBorderLeft, WdBorderType.wdBorderRight, WdBorderType.wdBorderTop, WdBorderType.wdBorderBottom, WdBorderType.wdBorderHorizontal, WdBorderType.wdBorderVertical}
         For Each borderType As WdBorderType In borderTypes
             With table.Borders(borderType)
@@ -1028,7 +1075,7 @@ NextParagraphDangling:
             End With
         Next
     End Sub
-    Private Sub SetTableFormat(ByVal table As Object)
+    Public Sub SetTableFormat(ByVal table As Object)
         Dim borderTypes As WdBorderType() = {WdBorderType.wdBorderLeft, WdBorderType.wdBorderRight, WdBorderType.wdBorderTop, WdBorderType.wdBorderBottom}
 
         For Each borderType As WdBorderType In borderTypes
@@ -1078,7 +1125,7 @@ NextParagraphDangling:
         table.Range.Cells.VerticalAlignment = WdCellVerticalAlignment.wdCellAlignVerticalCenter
     End Sub
 
-    Private Sub MergeTbl_Click(sender As Object, e As RibbonControlEventArgs) Handles MergeTblBtn.Click
+    Public Sub MergeTbl_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -1091,7 +1138,7 @@ NextParagraphDangling:
         SearchAndExecuteUnsplit()
         progressHandler.ProgressEnd()
     End Sub
-    Private Sub SearchAndExecuteUnsplit()
+    Public Sub SearchAndExecuteUnsplit()
         Dim searchText As String = "（续）" ' 要搜索的特定文字
         Dim found As Boolean = True
         Dim startFrom As Integer = 0 ' 新增变量，表示从文档的哪个位置开始搜索
@@ -1121,7 +1168,7 @@ NextParagraphDangling:
         End While
     End Sub
 
-    Private Sub unsplittab(para As Word.Paragraph)
+    Public Sub unsplittab(para As Word.Paragraph)
         ' 将光标移到段落的第一行
         para.Range.Select()
         wordApp.Selection.HomeKey(Word.WdUnits.wdLine)
@@ -1144,7 +1191,7 @@ NextParagraphDangling:
         End If
     End Sub
 
-    Private Sub SplitTbl_Click(sender As Object, e As RibbonControlEventArgs) Handles SplitTblBtn.Click
+    Public Sub SplitTbl_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -1154,11 +1201,11 @@ NextParagraphDangling:
         ' 切换到单页视图
         wordApp.ActiveWindow.View.Type = WdViewType.wdPrintView
         progressHandler.ProgressStartWaiting()
-        SplitTable(sender)
+        SplitTable(control)
         progressHandler.ProgressEnd()
     End Sub
     ' 这个子程序用于处理Microsoft Word中跨页的表格拆分
-    Private Sub SplitTableBatch(sender As Object)
+    Public Sub SplitTableBatch(control As Object)
         Dim para As Paragraph
         Dim range As Range
 
@@ -1170,18 +1217,18 @@ NextParagraphDangling:
                     range = para.Range.Next(WdUnits.wdParagraph).Tables(1).Cell(1, 1).Range
                     wordApp.Selection.SetRange(range.Start, range.End)
                     ' 调用SplitTable2过程
-                    SplitTable(sender)
+                    SplitTable(control)
                 End If
             End If
         Next
     End Sub
 
-    Private Sub SplitTable(sender As Object)
+    Public Sub SplitTable(control As Object)
         Try
             ' 循环，直到没有跨页的表格
             Do
                 ' 检查当前选择是否在表格中
-                If Not sender Is Nothing AndAlso Not CType(wordApp.Selection.Information(Word.WdInformation.wdWithInTable), Boolean) Then
+                If Not control Is Nothing AndAlso Not CType(wordApp.Selection.Information(Word.WdInformation.wdWithInTable), Boolean) Then
                     MessageBox.Show("请将光标移到待拆分的表格内！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Asterisk)
                     Exit Do
                 End If
@@ -1191,7 +1238,7 @@ NextParagraphDangling:
                 Dim endPageNumber As Integer = CType(selectedTable.Rows(selectedTable.Rows.Count).Range.Information(Word.WdInformation.wdActiveEndPageNumber), Integer)
 
                 ' 如果选中的表格没有跨页，则退出循环
-                If Not sender Is Nothing AndAlso startPageNumber = endPageNumber Then
+                If Not control Is Nothing AndAlso startPageNumber = endPageNumber Then
                     MessageBox.Show("所选表格不再跨页！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Asterisk)
                     Exit Do
                 End If
@@ -1271,7 +1318,7 @@ NextParagraphDangling:
         Return -1 ' 如果表格没有跨页，返回-1
     End Function
 
-    Private Sub FormatTableTitle(selection As Word.Selection, tableTitle As String)
+    Public Sub FormatTableTitle(selection As Word.Selection, tableTitle As String)
         selection.TypeText(tableTitle)
 
         'selection.MoveLeft(Type.Missing, 1, Type.Missing)
@@ -1289,7 +1336,7 @@ NextParagraphDangling:
         selection.ParagraphFormat.CharacterUnitFirstLineIndent = 0.0F
         selection.ParagraphFormat.FirstLineIndent = 0.0F
     End Sub
-    Private Sub CopyHeader(ByRef originalTable As Word.Table, ByRef newTable As Word.Table)
+    Public Sub CopyHeader(ByRef originalTable As Word.Table, ByRef newTable As Word.Table)
         ' 在新表格的顶部插入一行
         'newTable.Rows.Add(BeforeRow:=newTable.Rows(1))
 
@@ -1308,7 +1355,7 @@ NextParagraphDangling:
         Next
     End Sub
 
-    Private Sub CopyHeader2(ByRef originalTable As Word.Table, ByRef newTable As Word.Table)
+    Public Sub CopyHeader2(ByRef originalTable As Word.Table, ByRef newTable As Word.Table)
         ' 在新表格的顶部插入一行
         newTable.Rows.Add(BeforeRow:=newTable.Rows(1))
 
@@ -1329,7 +1376,7 @@ NextParagraphDangling:
         Next i
         Return 0
     End Function
-    Private Sub SplitTableAtRow(selectedTable As Word.Table, rowIndex As Integer)
+    Public Sub SplitTableAtRow(selectedTable As Word.Table, rowIndex As Integer)
         Dim originalTableCount As Integer = currentDoc.Tables.Count
         ' 在拆分之前获取当前表格的索引
         Dim originalTableIndex As Integer = GetTableIndex(selectedTable)
@@ -1344,7 +1391,7 @@ NextParagraphDangling:
 
     End Sub
 
-    Private Sub CoverChk_Click(sender As Object, e As RibbonControlEventArgs) Handles CoverChkBtn.Click
+    Public Sub CoverChk_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -1473,7 +1520,7 @@ NextParagraphDangling:
         Return uppercaseWord
     End Function
 
-    Private Sub ProcessParagraphWithStyle2(doc As Word.Document, styleName As String, replaceSpaces As Boolean)
+    Public Sub ProcessParagraphWithStyle2(doc As Word.Document, styleName As String, replaceSpaces As Boolean)
         For Each para As Word.Paragraph In doc.Paragraphs
             If para.Style.NameLocal = styleName Then
                 Dim range As Word.Range = para.Range
@@ -1508,7 +1555,7 @@ NextParagraphDangling:
         Next
     End Sub
 
-    Private Sub ForewordChk_Click(sender As Object, e As RibbonControlEventArgs) Handles ForewordChkBtn.Click
+    Public Sub ForewordChk_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -1574,7 +1621,7 @@ NextParagraphDangling:
 
 
 
-    Private Sub AbbChk_Click(sender As Object, e As RibbonControlEventArgs) Handles AbbChkBtn.Click
+    Public Sub AbbChk_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -1655,7 +1702,7 @@ NextParagraphDangling:
         Return result
     End Function
 
-    Private Sub VarFontMdf_Click(sender As Object, e As EventArgs) Handles VarFontMdfBtn.Click
+    Public Sub VarFontMdf_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -1666,7 +1713,7 @@ NextParagraphDangling:
         currentDoc.TrackRevisions = True
 
         Dim stringArray As String()
-        If sender Is Nothing Then
+        If control Is Nothing Then
             stringArray = New String() {"ɑ", "β", "x", "y", "z", "X", "Y", "Z", "a'", "b'", "u'", "v'", "x'", "y'", "z'", "U'", "V'", "X'", "Y'", "Z'", "u''", "v''", "x''", "y''", "z''", "U''", "V''", "X''", "Y''", "Z''"}
         Else
             Dim userInput As String = InputBox("请输入需要查找的字符或字符串:", "查找字符", "x")
@@ -1690,7 +1737,7 @@ NextParagraphDangling:
 
         progressHandler.ProgressEnd()
 
-        If Not sender Is Nothing Then
+        If Not control Is Nothing Then
             If modifiedCount > 0 Then
                 MessageBox.Show("发现" & modifiedCount & "个变量，已处理为斜体。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Else
@@ -1699,7 +1746,7 @@ NextParagraphDangling:
         End If
     End Sub
 
-    Private Sub ProcessItem(item As String, ByRef modifiedCount As Integer)
+    Public Sub ProcessItem(item As String, ByRef modifiedCount As Integer)
         ' 正则表达式用于匹配非英文字符的边界
         Dim pattern As String = $"(?<=[\u4e00-\u9fff]|[，。！？,.\s])(?<![a-zA-Z])({System.Text.RegularExpressions.Regex.Escape(item)})(?![a-zA-Z])(?=[\u4e00-\u9fff]|[，。！？,.\s])"
         Dim regex As New System.Text.RegularExpressions.Regex(pattern)
@@ -1756,7 +1803,7 @@ NextParagraphDangling:
             End If
         Loop
     End Sub
-    Private Sub ListChk_Click(sender As Object, e As RibbonControlEventArgs) Handles ListChkBtn.Click
+    Public Sub ListChk_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -1921,7 +1968,7 @@ NextParagraphDangling:
         End If
     End Sub
 
-    Private Sub SearchStd_Click(sender As Object, e As RibbonControlEventArgs) Handles SearchStdBtn.Click
+    Public Sub SearchStd_Click(ByVal control As IRibbonControl)
         If Not IsVip Then
             MsgBox("该功能捐赠后可用。")
             Exit Sub
@@ -1931,7 +1978,7 @@ NextParagraphDangling:
         dialog.ShowDialog()
     End Sub
 
-    Private Sub Run_Click(sender As Object, e As RibbonControlEventArgs) Handles runBtn.Click
+    Public Sub Run_Click(ByVal control As IRibbonControl)
         If Not IsVip Then
             MsgBox("该功能捐赠后可用。")
             Exit Sub
@@ -1959,35 +2006,35 @@ NextParagraphDangling:
         ' 函数调用列表，每个条目都是一个无参无返回值的匿名函数（Sub）
         Dim actions As New List(Of System.Action) From {
             Sub() AcceptRev(currentDoc),
-            Sub() CoverChk_Click(Nothing, e), '封面
+            Sub() CoverChk_Click(Nothing), '封面
             Sub() AcceptRev(currentDoc),
-            Sub() StructureChk_Click(Nothing, e), '内容结构
+            Sub() StructureChk_Click(Nothing), '内容结构
             Sub() AcceptRev(currentDoc),
-            Sub() ForewordChk_Click(Nothing, e),'引言
+            Sub() ForewordChk_Click(Nothing),'引言
             Sub() AcceptRev(currentDoc),
-            Sub() BibValid_Click(Nothing, e),'引用文件
+            Sub() BibValid_Click(Nothing),'引用文件
             Sub() AcceptRev(currentDoc),
-            Sub() BibRefChk_Click(Nothing, e),'引用提及
+            Sub() BibRefChk_Click(Nothing),'引用提及
             Sub() AcceptRev(currentDoc),
-            Sub() TermsChk_Click(Nothing, e),'术语
+            Sub() TermsChk_Click(Nothing),'术语
             Sub() AcceptRev(currentDoc),
-            Sub() AbbChk_Click(Nothing, e),'缩略语
+            Sub() AbbChk_Click(Nothing),'缩略语
             Sub() AcceptRev(currentDoc),
-            Sub() ListChk_Click(Nothing, e),'列项
+            Sub() ListChk_Click(Nothing),'列项
             Sub() AcceptRev(currentDoc),
-            Sub() BignumMdf_Click(Nothing, e),'千位分隔
+            Sub() BignumMdf_Click(Nothing),'千位分隔
             Sub() AcceptRev(currentDoc),
-            Sub() UnitMdf_Click(Nothing, e),'量和单位
+            Sub() UnitMdf_Click(Nothing),'量和单位
             Sub() AcceptRev(currentDoc),
-            Sub() VarFontMdf_Click(Nothing, e),'变量字体
+            Sub() VarFontMdf_Click(Nothing),'变量字体
             Sub() AcceptRev(currentDoc),
-            Sub() MergeTbl_Click(Nothing, e),'批量合并表格
+            Sub() MergeTbl_Click(Nothing),'批量合并表格
             Sub() AcceptRev(currentDoc),
-            Sub() BeautifyTbl_Click(Nothing, e),'批量美化表格
+            Sub() BeautifyTbl_Click(Nothing),'批量美化表格
             Sub() AcceptRev(currentDoc),
-            Sub() SplitTbl_Click(Nothing, e),'批量拆分表格
+            Sub() SplitTbl_Click(Nothing),'批量拆分表格
             Sub() AcceptRev(currentDoc),
-            Sub() ApplyStyle_Click(Nothing, e), '应用样式
+            Sub() ApplyStyle_Click(Nothing), '应用样式
             Sub() AcceptRev(currentDoc)
         }
 
@@ -2036,7 +2083,7 @@ NextParagraphDangling:
         End Try
     End Sub
 
-    Private Sub ApplyStyle_Click(sender As Object, e As RibbonControlEventArgs) Handles ApplyStyleBtn.Click
+    Public Sub ApplyStyle_Click(ByVal control As IRibbonControl)
         If wordApp.Documents.Count > 0 Then
             currentDoc = wordApp.ActiveDocument
         Else
@@ -2075,23 +2122,23 @@ NextParagraphDangling:
         End If
     End Sub
 
-    Private Sub AcceptRev(doc As Document)
+    Public Sub AcceptRev(doc As Document)
         ' 接受当前文档中的所有修订
         For Each revision As Word.Revision In doc.Revisions
             revision.Accept()
         Next
     End Sub
 
-    Private Sub Donate_Click(sender As Object, e As RibbonControlEventArgs) Handles DonateBtn.Click
+    Public Sub Donate_Click(ByVal control As IRibbonControl)
         Dim donateForm As New DonateForm()
         donateForm.ShowDialog() ' 以模态方式显示窗体
     End Sub
 
-    Private Sub Setting_Click(sender As Object, e As RibbonControlEventArgs) Handles SettingBtn.Click
+    Public Sub Setting_Click(ByVal control As IRibbonControl)
         Dim settingsForm As New SettingForm(Me)
         settingsForm.ShowDialog() ' 或者使用 settingsForm.Show() 根据需要
     End Sub
-    Private Sub InsertCatalog()
+    Public Sub InsertCatalog()
         Dim flag As Boolean = False
         Dim num_location As Integer = 0
         For i As Integer = 2 To 4
@@ -2165,8 +2212,114 @@ NextParagraphDangling:
         Return success
     End Function
 
-    Private Sub AIwriting_Click(sender As Object, e As RibbonControlEventArgs) Handles AIwriting.Click
+    Public Sub AIwriting_Click(ByVal control As IRibbonControl)
         MsgBox("该功能正在开发，请捐赠。")
         Exit Sub
     End Sub
+    ' 实现自定义操作的回调方法
+    Public Sub OnTermAction(ByVal control As IRibbonControl)
+        If Not IsVip Then
+            MsgBox("该功能捐赠后可用。")
+            Exit Sub
+        End If
+
+        Dim modelInterface As IModelInterface = ModelInterfaceFactory.CreateModelInterface()
+        Dim modelConfig As New ModelConfig()
+
+        Try
+            Dim application As Microsoft.Office.Interop.Word.Application = Globals.ThisAddIn.Application
+            Dim selectedRange As Microsoft.Office.Interop.Word.Range = application.Selection.Range
+
+            If Not selectedRange.Text Is Nothing AndAlso selectedRange.Text.Trim() <> String.Empty Then
+                Dim selectedText As String = selectedRange.Text.Trim()
+                ' 获取模型修改后的文本
+                Dim modifiedText As String = modelInterface.WriteTerm(selectedText, modelConfig)
+
+                ' 插入一个新段落到选择范围的结束位置
+                selectedRange.Collapse(Microsoft.Office.Interop.Word.WdCollapseDirection.wdCollapseEnd)
+                ' 记录插入前的结束位置，这将是新内容的起始位置
+                Dim insertStart As Integer = selectedRange.End
+
+                ' 插入新段落和文本
+                selectedRange.InsertAfter(modifiedText & vbCr)
+
+                ' 更新selectedRange以包含新插入的文本
+                selectedRange.SetRange(insertStart, selectedRange.End - 1) '+ Len(modifiedText) - 1)
+
+                ' 应用特定的样式到新段落
+                Dim styleName As String = "标准文件_段"
+                selectedRange.Style = application.ActiveDocument.Styles(styleName)
+            Else
+                MessageBox.Show("请先选择一段文本。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            End If
+        Catch ex As Exception
+            MessageBox.Show("操作时发生错误：" & ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    Public Sub OnClauseAction(ByVal control As IRibbonControl)
+        If Not IsVip Then
+            MsgBox("该功能捐赠后可用。")
+            Exit Sub
+        End If
+
+        Dim modelInterface As IModelInterface = ModelInterfaceFactory.CreateModelInterface()
+        Dim modelConfig As New ModelConfig()
+
+        Try
+            Dim application As Microsoft.Office.Interop.Word.Application = Globals.ThisAddIn.Application
+            Dim selectedRange As Microsoft.Office.Interop.Word.Range = application.Selection.Range
+
+            If Not selectedRange.Text Is Nothing AndAlso selectedRange.Text.Trim() <> String.Empty Then
+                Dim selectedText As String = selectedRange.Text.Trim()
+                ' 获取模型修改后的文本
+                Dim modifiedText As String = modelInterface.WriteClause(selectedText, modelConfig)
+
+                ' 保留原有选区的样式
+                Dim originalStyle As Object = selectedRange.Style
+
+                ' 插入一个新段落到选择范围的结束位置
+                selectedRange.Collapse(Microsoft.Office.Interop.Word.WdCollapseDirection.wdCollapseEnd)
+                ' 记录插入前的结束位置，这将是新内容的起始位置
+                Dim insertStart As Integer = selectedRange.End
+
+                ' 插入新段落和文本
+                selectedRange.InsertAfter(modifiedText & vbCr)
+
+                ' 更新selectedRange以包含新插入的文本
+                selectedRange.SetRange(insertStart, selectedRange.End - 1)
+
+                ' 应用之前选择文本的样式到新段落
+                selectedRange.Style = originalStyle
+
+                ' 设置首行缩进为24磅，大约等于两个中文字符的宽度
+                'selectedRange.ParagraphFormat.FirstLineIndent = 24
+            Else
+                MessageBox.Show("请先选择一段文本。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            End If
+        Catch ex As Exception
+            MessageBox.Show("操作时发生错误：" & ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+#End Region
+
+#Region "帮助器"
+
+    Private Shared Function GetResourceText(ByVal resourceName As String) As String
+        Dim asm As Reflection.Assembly = Reflection.Assembly.GetExecutingAssembly()
+        Dim resourceNames() As String = asm.GetManifestResourceNames()
+        For i As Integer = 0 To resourceNames.Length - 1
+            If String.Compare(resourceName, resourceNames(i), StringComparison.OrdinalIgnoreCase) = 0 Then
+                Using resourceReader As IO.StreamReader = New IO.StreamReader(asm.GetManifestResourceStream(resourceNames(i)))
+                    If resourceReader IsNot Nothing Then
+                        Return resourceReader.ReadToEnd()
+                    End If
+                End Using
+            End If
+        Next
+        Return Nothing
+    End Function
+
+#End Region
+
 End Class

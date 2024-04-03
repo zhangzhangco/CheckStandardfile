@@ -30,7 +30,7 @@ Public Class BibsearchDialog
     Public Sub New()
         InitializeComponent()
     End Sub
-    Private Sub InitializeComponent()
+    Public Sub InitializeComponent()
         Me.Panel1 = New System.Windows.Forms.Panel()
         Me.searchCancel = New System.Windows.Forms.Button()
         Me.searchOk = New System.Windows.Forms.Button()
@@ -141,14 +141,14 @@ Public Class BibsearchDialog
 
     End Sub
 
-    Private Sub searchOk_Click(sender As Object, e As EventArgs) Handles searchOk.Click
+    Public Sub searchOk_Click(control As Object, e As EventArgs) Handles searchOk.Click
         If tb_stdCode.Text <> "" Then
             Search(tb_stdCode.Text.ToUpper(), rb_guonei.Checked, HttpClientInstance)
         End If
     End Sub
-    Private Sub Search(ByVal text As String, ByVal isDomestic As Boolean, HttpClientInstance As HttpClient)
+    Public Sub Search(ByVal text As String, ByVal isDomestic As Boolean, HttpClientInstance As HttpClient)
         ' 忽略SSL证书验证（生产环境中应处理证书验证）
-        ServicePointManager.ServerCertificateValidationCallback = Function(sender, certificate, chain, sslPolicyErrors) True
+        ServicePointManager.ServerCertificateValidationCallback = Function(control, certificate, chain, sslPolicyErrors) True
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12
         ' 或者，为了兼容未来的协议版本，可以这样设置：
         ' ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13

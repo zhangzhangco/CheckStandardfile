@@ -21,7 +21,7 @@ Partial Class DonateForm
     '可以使用 Windows 窗体设计器修改它。  
     '不要使用代码编辑器修改它。
     <System.Diagnostics.DebuggerStepThrough()> _
-    Private Sub InitializeComponent()
+    Public Sub InitializeComponent()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(DonateForm))
         Me.wechatPaymentPictureBox = New System.Windows.Forms.PictureBox()
         Me.wechatQRCodePictureBox = New System.Windows.Forms.PictureBox()

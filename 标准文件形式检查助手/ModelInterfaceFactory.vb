@@ -1,6 +1,6 @@
 ﻿Public Class ModelInterfaceFactory
     Public Shared Function CreateModelInterface() As IModelInterface
-        Select Case Ribbon1.Llm
+        Select Case Ribbon.Llm
             Case "OpenAI"
                 Return New OpenAIModelInterface()
             Case "智普" ' 假设这是另一种模型的标识

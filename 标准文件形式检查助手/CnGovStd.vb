@@ -27,7 +27,7 @@ Module CnGovStd
 
     Public Function SearchCnGovStd(code As String, HttpClientInstance As HttpClient) As String
         ' 忽略SSL证书验证（生产环境中应处理证书验证）
-        ServicePointManager.ServerCertificateValidationCallback = Function(sender, certificate, chain, sslPolicyErrors) True
+        ServicePointManager.ServerCertificateValidationCallback = Function(control, certificate, chain, sslPolicyErrors) True
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12
         Dim result As String = String.Empty
         code = code.Replace("—", "-")

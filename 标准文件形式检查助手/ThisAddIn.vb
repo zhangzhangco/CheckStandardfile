@@ -1,14 +1,17 @@
 ﻿Imports System.Threading
-
+Imports Microsoft.Office.Core
 Public Class ThisAddIn
 
     Public Shared UISynchronizationContext As SynchronizationContext
 
-    Private Sub ThisAddIn_Startup() Handles Me.Startup
+    Public Sub ThisAddIn_Startup() Handles Me.Startup
         UISynchronizationContext = SynchronizationContext.Current
     End Sub
 
-    Private Sub ThisAddIn_Shutdown() Handles Me.Shutdown
+    Public Sub ThisAddIn_Shutdown() Handles Me.Shutdown
 
     End Sub
+    Protected Overrides Function CreateRibbonExtensibilityObject() As Microsoft.Office.Core.IRibbonExtensibility
+        Return New Ribbon()
+    End Function
 End Class

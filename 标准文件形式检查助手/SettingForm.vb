@@ -31,13 +31,13 @@ Public Class SettingForm
     ' 使用静态HttpClient实例以提高效率和资源复用
     Public Shared ReadOnly HttpClientInstance As New HttpClient()
     Friend WithEvents update As Button
-    Private _rb As Ribbon1
+    Private _rb As Ribbon
 
-    Public Sub New(rb As Ribbon1)
+    Public Sub New(rb As Ribbon)
         InitializeComponent()
         _rb = rb
     End Sub
-    Private Sub InitializeComponent()
+    Public Sub InitializeComponent()
         Me.GroupBox1 = New System.Windows.Forms.GroupBox()
         Me.TstLicenseBtn = New System.Windows.Forms.Button()
         Me.Label4 = New System.Windows.Forms.Label()
@@ -222,16 +222,16 @@ Public Class SettingForm
         Me.ResumeLayout(False)
 
     End Sub
-    Private Sub SettingForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+    Public Sub SettingForm_Load(control As Object, e As EventArgs) Handles MyBase.Load
         LoadSettings()
     End Sub
-    Private Sub OK_Click(sender As Object, e As EventArgs) Handles OK.Click
+    Public Sub OK_Click(control As Object, e As EventArgs) Handles OK.Click
         SaveSettings()
     End Sub
-    Private Sub SaveSettings()
+    Public Sub SaveSettings()
         ' 获取当前执行的DLL的目录
         Dim assemblyPath As String = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-        Dim filePath As String = Path.Combine(assemblyPath, Ribbon1.IniPath)
+        Dim filePath As String = Path.Combine(assemblyPath, Ribbon.IniPath)
 
         ' 接下来，保存设置到setting.ini文件
         Using writer As New StreamWriter(filePath, False)
@@ -242,10 +242,10 @@ Public Class SettingForm
         _rb.LoadSettings()
     End Sub
 
-    Private Sub LoadSettings()
+    Public Sub LoadSettings()
         ' 获取当前执行的DLL的目录
         Dim assemblyPath As String = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-        Dim filePath As String = Path.Combine(assemblyPath, Ribbon1.IniPath)
+        Dim filePath As String = Path.Combine(assemblyPath, Ribbon.IniPath)
 
         If File.Exists(filePath) Then
             ' 文件存在时，加载设置
@@ -266,9 +266,9 @@ Public Class SettingForm
         End If
     End Sub
 
-    Private Sub TstLicenseBtn_Click(sender As Object, e As EventArgs) Handles TstLicenseBtn.Click
+    Public Sub TstLicenseBtn_Click(control As Object, e As EventArgs) Handles TstLicenseBtn.Click
         System.Threading.Tasks.Task.Run(Async Function()
-                                            If Not Await Ribbon1.ValidLicenseKeyAsync(licenseKeyTB.Text) Then
+                                            If Not Await Ribbon.ValidLicenseKeyAsync(licenseKeyTB.Text) Then
                                                 Forms.MessageBox.Show("测试失败。", "测试结果", MessageBoxButtons.OK, MessageBoxIcon.Error)
                                             Else
                                                 Forms.MessageBox.Show("测试成功。", "测试结果", MessageBoxButtons.OK, MessageBoxIcon.Information)
@@ -276,11 +276,11 @@ Public Class SettingForm
                                         End Function)
     End Sub
 
-    Private Sub update_Click(sender As Object, e As EventArgs) Handles update.Click
-        Dim process1 As Process = Process.Start(Ribbon1.UpdaterPath, "/checknow")
+    Public Sub update_Click(control As Object, e As EventArgs) Handles update.Click
+        Dim process1 As Process = Process.Start(Ribbon.UpdaterPath, "/checknow")
     End Sub
 
-    Private Function TstLlmBtn_ClickAsync(sender As Object, e As EventArgs) As Task Handles TstLlmBtn.Click
+    Private Function TstLlmBtn_ClickAsync(control As Object, e As EventArgs) As Task Handles TstLlmBtn.Click
         Dim apiSelection As String = LlmCB.SelectedItem.ToString()
         Dim apiKey As String = LlmKeyTB.Text
 

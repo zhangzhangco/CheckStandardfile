@@ -7,7 +7,7 @@ Imports System.Windows.Forms
 Module InternationalStd
     Public Function SearchInterStd(code As String, HttpClientInstance As HttpClient, licenseKey As String) As String
         ' 忽略SSL证书验证（生产环境中应处理证书验证）
-        ServicePointManager.ServerCertificateValidationCallback = Function(sender, certificate, chain, sslPolicyErrors) True
+        ServicePointManager.ServerCertificateValidationCallback = Function(control, certificate, chain, sslPolicyErrors) True
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12
 
         ' 异步发送请求并获取JSON响应
@@ -30,7 +30,7 @@ Module InternationalStd
             requestMessage.Headers.Add("Upgrade-Insecure-Requests", "1")
 
             ' 使用HttpClient实例发送构造好的请求
-            Dim response As HttpResponseMessage = Ribbon1.HttpClientInstance.SendAsync(requestMessage).GetAwaiter().GetResult()
+            Dim response As HttpResponseMessage = Ribbon.HttpClientInstance.SendAsync(requestMessage).GetAwaiter().GetResult()
             If response.IsSuccessStatusCode Then
                 ' 确保同步调用
                 Return response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
