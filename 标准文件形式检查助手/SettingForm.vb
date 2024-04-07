@@ -32,6 +32,7 @@ Public Class SettingForm
     Public Shared ReadOnly HttpClientInstance As New HttpClient()
     Friend WithEvents update As Button
     Private _rb As Ribbon
+    Private llmApiToken As String
 
     Public Sub New(rb As Ribbon)
         InitializeComponent()
@@ -238,6 +239,7 @@ Public Class SettingForm
             writer.WriteLine("licensekey=" & licenseKeyTB.Text)
             writer.WriteLine("llm=" & LlmCB.Text)
             writer.WriteLine("llmkey=" & LlmKeyTB.Text)
+            writer.WriteLine("llmtoken=" & Me.llmApiToken)
         End Using
         _rb.LoadSettings()
     End Sub
@@ -280,20 +282,22 @@ Public Class SettingForm
         Dim process1 As Process = Process.Start(Ribbon.UpdaterPath, "/checknow")
     End Sub
 
-    Private Function TstLlmBtn_ClickAsync(control As Object, e As EventArgs) As Task Handles TstLlmBtn.Click
+    Private Function TstLlmBtn_Click(control As Object, e As EventArgs) Handles TstLlmBtn.Click
         Dim apiSelection As String = LlmCB.SelectedItem.ToString()
         Dim apiKey As String = LlmKeyTB.Text
-
+        Dim apkToken As String = Nothing
         Dim modelInterface As IModelInterface
         If apiSelection = "OpenAI" Then
             modelInterface = New OpenAIModelInterface()
         Else
-            ' modelInterface = New ZhiPuModelInterface() ' 假设这是智普接口的实现
+            modelInterface = New ZhiPuModelInterface()
+            apkToken = ZhiPuModelInterface.GenerateToken(apiKey, 864000)
         End If
 
-        Dim config As New ModelConfig(apiSelection, apiKey)
+        Dim config As New ModelConfig(apiSelection, apiKey, apkToken)
         Dim isSuccess As Boolean = modelInterface.TestApiKey(config)
         If isSuccess Then
+            Me.llmApiToken = apkToken
             Forms.MessageBox.Show("API key有效。", "测试成功", MessageBoxButtons.OK, MessageBoxIcon.Information)
         Else
             Forms.MessageBox.Show("API key无效，请检查。", "测试失败", MessageBoxButtons.OK, MessageBoxIcon.Error)

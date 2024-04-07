@@ -57,6 +57,7 @@ Public Class Ribbon
     Public Shared Property LicenseKey As String
     Public Shared Property Llm As String
     Public Shared Property LlmKey As String
+    Public Shared Property LlmToken As String
     Public Property IsVip As Boolean = False
     Public Shared InstalledPath = Environment.GetEnvironmentVariable("APPDATA") & "\RelatonChina\标准形式检查助手\"
     Public Shared ReadOnly IniPath = InstalledPath & "setting.ini"
@@ -113,7 +114,7 @@ Public Class Ribbon
     End Function
     Public Sub About_Click(ByVal control As IRibbonControl)
         Dim aboutMessage As String = "形式检查助手" & Environment.NewLine
-        aboutMessage &= "版本: 0.4.1" & Environment.NewLine
+        aboutMessage &= "版本: 0.5.1" & Environment.NewLine
         aboutMessage &= "WeChat：HelloLLM2035" & Environment.NewLine
         aboutMessage &= "用于辅助进行标准形式检查和编制的小工具。"
 
@@ -2178,6 +2179,8 @@ NextParagraphDangling:
                             Llm = parts(1).Trim()
                         Case "llmkey"
                             LlmKey = parts(1).Trim()
+                        Case "llmtoken"
+                            LlmToken = parts(1).Trim()
                     End Select
                 End If
             Next

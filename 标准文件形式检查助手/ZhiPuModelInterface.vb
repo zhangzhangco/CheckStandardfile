@@ -1,25 +1,57 @@
-﻿Imports Newtonsoft.Json
+﻿Imports System
+Imports System.IdentityModel.Tokens.Jwt
+Imports Microsoft.IdentityModel.Tokens
+Imports System.Text
+Imports System.Security.Cryptography
+Imports Newtonsoft.Json
 Imports System.Net.Http
-Imports System.Threading.Tasks
+Imports System.Security.Claims
 
-Public Class OpenAIModelInterface
+Friend Class ZhiPuModelInterface
     Implements IModelInterface
-
-    Private ReadOnly httpClient As HttpClient
-
     Public Sub New()
         httpClient = New HttpClient()
     End Sub
+    Private ReadOnly httpClient As HttpClient
     Public Function TestApiKey(config As ModelConfig) As Boolean Implements IModelInterface.TestApiKey
         Try
             ' 发送一个简单的请求来测试API key
             Dim prompt As String = "The following is a test: Hello, world!"
-            SendToLLM(prompt, config.ApiKey)
+            SendToLLM(prompt, config.ApiToken)
             Return True ' 如果没有异常，则认为key有效
         Catch ex As Exception
             Return False ' 如果有异常，则认为key无效
         End Try
     End Function
+
+    Public Function SendToLLM(prompt As String, apiToken As String) As String Implements IModelInterface.SendToLLM
+        ' 初始化HttpClient
+        If httpClient.DefaultRequestHeaders.Authorization Is Nothing Then
+            httpClient.DefaultRequestHeaders.Authorization = New System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiToken)
+        End If
+
+        ' 构造请求体
+        Dim requestBody = New With {
+        .model = "glm-4",
+        .messages = New List(Of Object) From {
+                New With {.role = "user", .content = prompt}
+            }
+        }
+
+        ' 将请求体对象转换为JSON字符串
+        Dim jsonContent = JsonConvert.SerializeObject(requestBody)
+        Dim content = New StringContent(jsonContent, Encoding.UTF8, "application/json")
+
+        ' 发送POST请求到Zhipu的chat/completions端点
+        Dim response = httpClient.PostAsync("https://open.bigmodel.cn/api/paas/v4/chat/completions", content).Result
+
+        ' 确保请求成功
+        response.EnsureSuccessStatusCode()
+
+        ' 返回响应内容
+        Return response.Content.ReadAsStringAsync().Result
+    End Function
+
     Public Function CheckRequirements(text As String, config As ModelConfig) As Boolean Implements IModelInterface.CheckRequirements
         Try
             ' 构建专用于检查要求性条款的prompt
@@ -32,6 +64,10 @@ Public Class OpenAIModelInterface
         End Try
     End Function
 
+    Public Function OptimizeSentence(sentence As String, config As ModelConfig) As String Implements IModelInterface.OptimizeSentence
+        Throw New NotImplementedException()
+    End Function
+
     Public Function WriteTerm(text As String, config As ModelConfig) As String Implements IModelInterface.WriteTerm
         Try
             Dim instructure As String = <a>role: 这个助手旨在协助编撰标准文件中的术语，包含中文术语、英文对应词以及术语定义。例如：“标准化机构  standardizing body 公认从事标准化活动的机构。”
@@ -42,13 +78,14 @@ Public Class OpenAIModelInterface
             定义的结构应为：定义 = 上位概念 + 区分特征，旨在区别该概念与其他并列概念的不同。例如：“公认从事标准化活动的机构。””
             </a>.Value
             Dim prompt As String = $"{instructure} user:修改的术语： '{text}'"
-            Dim response As String = SendToLLM(prompt, config.ApiKey)
+            Dim response As String = SendToLLM(prompt, config.ApiToken)
             ' 解析response并返回结果
             Return InterpretResponseContent(response)
         Catch ex As Exception
             Return String.Empty
         End Try
     End Function
+
     Public Function WriteClause(text As String, config As ModelConfig) As String Implements IModelInterface.WriteClause
         Try
             Dim instructure As String = <a>role:你是标准文件条文助手，负责帮助用户修改用户给出的标准文件中的条文。你的能力有:
@@ -63,11 +100,7 @@ Public Class OpenAIModelInterface
                 又如:只有文件中多次使用并需要说明某符号或缩略语时，才应列出该符号或缩略语。
                 又如:根据所形成的文件的具体情况，应依次对下列内容建立目次列表。
 
-                不使用"必须"作为"应"的替代词，不使用"不可""不得"禁止"代替"不应"来表示禁止，不应使用诸如"应足够坚固"应较为便捷"等定性的要求
-
-                不要说无关的话，直接给出撰写的条文。
-                不要改变用户给你的条文的格式，也不要扩展内容。
-                如果原文没有列条目，你也不要列条目。
+                不使用"必须"作为"应"的替代词，不使用"不可""不得"禁止"代替"不应"来表示禁止，不应使用诸如"应足够坚固"应较为便捷"等定性的要求      
 
                 凡是需要提及文件具体内容时，不应提及页码，而应提及文件内容的编号，如∶
                 1.章或条表述为∶"第4章""5.2""9.3.3b）""A.1";
@@ -86,50 +119,71 @@ Public Class OpenAIModelInterface
 
                 不注日期引用的表述不应指明年份。具体表述时只应提及"文件代号和顺序号" ，当引用一个文件的所有部分时，应在文件顺序号之后标明"（所有部分）" ，如∶
                 "……按照GB/T XXXXX确定的……。"
-                "……符合GB/T XXXXX《所有部分）中的规定。"”</a>.Value
-            Dim prompt As String = $"{instructure} user:修改的条文： '{text}'"
-            Dim response As String = SendToLLM(prompt, config.ApiKey)
+                "……符合GB/T XXXXX《所有部分）中的规定。"
+
+                不要说无关的话，直接给出修改后的条文。
+                不要改变用户给你的条文的格式，也不要扩展内容。
+                如果原文没有列条目，你也不要列条目。</a>.Value
+            Dim prompt As String = $"{instructure} user:需要修改的条文： '{text}'"
+            Dim response As String = SendToLLM(prompt, config.ApiToken)
             ' 解析response并返回结果
             Return InterpretResponseContent(response)
         Catch ex As Exception
             Return String.Empty
         End Try
     End Function
-
-    Public Function OptimizeSentenceAsync(sentence As String, config As ModelConfig) As String Implements IModelInterface.OptimizeSentence
-        Throw New NotImplementedException()
-    End Function
-
-    Public Function SendToLLM(prompt As String, apiKey As String) As String Implements IModelInterface.SendToLLM
-        ' 初始化HttpClient
-        If httpClient.DefaultRequestHeaders.Authorization Is Nothing Then
-            httpClient.DefaultRequestHeaders.Authorization = New System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey)
+    Public Shared Function GenerateToken(ByVal apikey As String, ByVal expSeconds As Integer) As String
+        Dim parts() As String = apikey.Split(".")
+        If parts.Length <> 2 Then
+            Throw New Exception("Invalid apiKey format. Expected 'id.secret'.")
         End If
 
-        ' 构造请求体
-        Dim requestBody = New With {
-        .model = "gpt-3.5-turbo",
-        .messages = New List(Of Object) From {
-            New With {.role = "user", .content = prompt}
+        Dim id = parts(0)
+        Dim secret = parts(1)
+
+        ' 确保密钥长度至少为256位（32字节）
+        Dim keyBytes = EnsureKeySize(secret, 32) ' 假设此函数确保密钥的长度
+        Dim key = New SymmetricSecurityKey(keyBytes)
+        Dim creds = New SigningCredentials(key, SecurityAlgorithms.HmacSha256)
+
+        Dim nowUtc = DateTime.UtcNow
+        Dim exp = nowUtc.AddSeconds(expSeconds)
+
+        ' 创建自定义头部
+        Dim headers = New JwtHeader(creds)
+        'headers.Add("alg", "HS256")
+        headers.Add("sign_type", "SIGN") ' 添加自定义字段
+
+        ' 创建负载
+        Dim payload = New JwtPayload(
+        issuer:=Nothing,
+        audience:=Nothing,
+        claims:=New Claim() {
+            New Claim("api_key", id),
+            New Claim(JwtRegisteredClaimNames.Exp, New DateTimeOffset(exp).ToUnixTimeMilliseconds().ToString()), ' 过期时间（毫秒）
+            New Claim("timestamp", New DateTimeOffset(nowUtc).ToUnixTimeMilliseconds().ToString()) ' 当前时间戳（毫秒）
         },
-        .temperature = 0.7
-    }
+        notBefore:=Nothing,
+        expires:=exp
+    )
 
-        ' 将请求体对象转换为JSON字符串
-        Dim jsonContent = JsonConvert.SerializeObject(requestBody)
-        Dim content = New StringContent(jsonContent, Encoding.UTF8, "application/json")
-
-        ' 发送POST请求到OpenAI的chat/completions端点
-        Dim response = httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content).Result
-
-        ' 确保请求成功
-        response.EnsureSuccessStatusCode()
-
-        ' 返回响应内容
-        Return response.Content.ReadAsStringAsync().Result
+        ' 创建并返回token
+        Dim token = New JwtSecurityToken(headers, payload)
+        Return New JwtSecurityTokenHandler().WriteToken(token)
     End Function
-
-    ' 这是一个示例函数，需要根据OpenAI返回的实际内容进行实现
+    Public Shared Function EnsureKeySize(secret As String, sizeInBytes As Integer) As Byte()
+        Dim keyBytes As Byte() = Encoding.UTF8.GetBytes(secret)
+        If keyBytes.Length >= sizeInBytes Then
+            ' 如果密钥已经足够长，直接返回
+            Return keyBytes
+        Else
+            ' 如果密钥太短，使用0填充至所需长度
+            Dim paddedKeyBytes(sizeInBytes - 1) As Byte ' 创建一个新的数组，长度为sizeInBytes
+            Array.Copy(keyBytes, paddedKeyBytes, keyBytes.Length) ' 将原密钥复制到新数组
+            ' 剩余的部分会默认初始化为0，无需手动填充
+            Return paddedKeyBytes
+        End If
+    End Function
     Private Function InterpretResponse(response As String) As Boolean
         ' 解析JSON响应
         Dim jsonResponse = Newtonsoft.Json.Linq.JObject.Parse(response)
