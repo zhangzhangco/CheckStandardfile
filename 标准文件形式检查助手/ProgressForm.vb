@@ -1,7 +1,4 @@
-﻿Imports System.Drawing
-Imports System.Windows
-Imports System.Windows.Forms
-Imports System.Windows.Forms.VisualStyles
+﻿Imports System.Windows.Forms
 
 Public Class ProgressForm
     Inherits Form

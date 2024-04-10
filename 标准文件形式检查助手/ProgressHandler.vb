@@ -1,11 +1,4 @@
-﻿' ProgressHandler.vb
-Imports System.Windows.Controls
-Imports System.Windows.Forms
-Imports Application = Microsoft.Office.Interop.Word.Application
-Imports System.IO
-Imports Microsoft.Office.Interop.Word
-
-Public Class ProgressHandler
+﻿Public Class ProgressHandler
     Public Shared progressForm As ProgressForm = New ProgressForm()
 
     Public Sub ProgressStart()

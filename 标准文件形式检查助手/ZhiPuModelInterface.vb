@@ -1,11 +1,6 @@
-﻿Imports System
-Imports System.IdentityModel.Tokens.Jwt
-Imports Microsoft.IdentityModel.Tokens
-Imports System.Text
+﻿Imports System.Net.Http
 Imports System.Security.Cryptography
 Imports Newtonsoft.Json
-Imports System.Net.Http
-Imports System.Security.Claims
 
 Friend Class ZhiPuModelInterface
     Implements IModelInterface
@@ -132,6 +127,7 @@ Friend Class ZhiPuModelInterface
             Return String.Empty
         End Try
     End Function
+
     Public Shared Function GenerateToken(ByVal apikey As String, ByVal expSeconds As Integer) As String
         Dim parts() As String = apikey.Split(".")
         If parts.Length <> 2 Then
@@ -141,36 +137,29 @@ Friend Class ZhiPuModelInterface
         Dim id = parts(0)
         Dim secret = parts(1)
 
-        ' 确保密钥长度至少为256位（32字节）
-        Dim keyBytes = EnsureKeySize(secret, 32) ' 假设此函数确保密钥的长度
-        Dim key = New SymmetricSecurityKey(keyBytes)
-        Dim creds = New SigningCredentials(key, SecurityAlgorithms.HmacSha256)
+        ' 构造头部
+        Dim header = Convert.ToBase64String(Encoding.UTF8.GetBytes("{""alg"":""HS256"",""typ"":""JWT"",""sign_type"":""SIGN""}"))
 
+        ' 构造负载
         Dim nowUtc = DateTime.UtcNow
         Dim exp = nowUtc.AddSeconds(expSeconds)
+        Dim payloadJson = $"{{""api_key"":""{id}"",""exp"":{New DateTimeOffset(exp).ToUnixTimeSeconds()},""timestamp"":{New DateTimeOffset(nowUtc).ToUnixTimeSeconds()}}}"
+        Dim payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(payloadJson))
 
-        ' 创建自定义头部
-        Dim headers = New JwtHeader(creds)
-        'headers.Add("alg", "HS256")
-        headers.Add("sign_type", "SIGN") ' 添加自定义字段
+        ' 构造签名
+        Dim stringToSign = header & "." & payload
+        Dim keyBytes = Encoding.UTF8.GetBytes(secret)
+        Dim signatureBytes As Byte()
+        Using hmac = New HMACSHA256(keyBytes)
+            signatureBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign))
+        End Using
+        Dim signature = Convert.ToBase64String(signatureBytes)
 
-        ' 创建负载
-        Dim payload = New JwtPayload(
-        issuer:=Nothing,
-        audience:=Nothing,
-        claims:=New Claim() {
-            New Claim("api_key", id),
-            New Claim(JwtRegisteredClaimNames.Exp, New DateTimeOffset(exp).ToUnixTimeMilliseconds().ToString()), ' 过期时间（毫秒）
-            New Claim("timestamp", New DateTimeOffset(nowUtc).ToUnixTimeMilliseconds().ToString()) ' 当前时间戳（毫秒）
-        },
-        notBefore:=Nothing,
-        expires:=exp
-    )
-
-        ' 创建并返回token
-        Dim token = New JwtSecurityToken(headers, payload)
-        Return New JwtSecurityTokenHandler().WriteToken(token)
+        ' 组合头部、负载和签名
+        Dim token = $"{header}.{payload}.{signature}"
+        Return token
     End Function
+
     Public Shared Function EnsureKeySize(secret As String, sizeInBytes As Integer) As Byte()
         Dim keyBytes As Byte() = Encoding.UTF8.GetBytes(secret)
         If keyBytes.Length >= sizeInBytes Then

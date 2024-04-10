@@ -1,6 +1,5 @@
 ﻿Imports System.Drawing
 Imports System.Runtime.InteropServices
-Imports System.Windows.Forms
 
 Public Class RibbonHelpers
     <DllImport("oleaut32.dll", ExactSpelling:=True, PreserveSig:=False)>

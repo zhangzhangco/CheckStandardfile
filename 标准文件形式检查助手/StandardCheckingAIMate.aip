@@ -12,10 +12,10 @@
     <ROW Property="ARPCOMMENTS" Value="此 Installer 数据库包含了安装 [|ProductName] 所需的逻辑和数据。" ValueLocId="*"/>
     <ROW Property="ARPNOREPAIR" MultiBuildValue="DefaultBuild:1"/>
     <ROW Property="Manufacturer" Value="RelatonChina"/>
-    <ROW Property="ProductCode" Value="2052:{EDEBBF9B-EA88-4CE0-8C99-4F053CA8DC15} " Type="16"/>
+    <ROW Property="ProductCode" Value="2052:{B9D29120-A9C1-4C67-9ED9-2386584E6DB8} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="标准形式检查助手"/>
-    <ROW Property="ProductVersion" Value="0.4.1.0" Options="32"/>
+    <ROW Property="ProductVersion" Value="0.5.3.0" Options="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{52ED3F27-BC65-4720-8E16-E67C99F2EE6B}"/>
     <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
@@ -43,13 +43,13 @@
     <ROW Component="Manufacturer.ProductName" ComponentId="{3EF744B1-F8E3-4164-9637-AFAEC280D3DA}" Directory_="APPDIR" Attributes="4" KeyPath="Manufacturer.ProductName"/>
     <ROW Component="Manufacturer.ProductName_1" ComponentId="{59835E05-38BC-45B1-9247-3EDE57342D93}" Directory_="APPDIR" Attributes="4" KeyPath="Manufacturer.ProductName_1"/>
     <ROW Component="Manufacturer.ProductName_3" ComponentId="{9144FD6B-0796-4128-944C-8C42D0F62AD6}" Directory_="APPDIR" Attributes="4" KeyPath="Manufacturer.ProductName_3"/>
-    <ROW Component="Microsoft.Office.Tools.Common.v4.0.Utilities.dll" ComponentId="{6BBF28F2-19F4-46B8-8EE2-ED7D0761AEB2}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.Office.Tools.Common.v4.0.Utilities.dll"/>
-    <ROW Component="Newtonsoft.Json.dll" ComponentId="{667642EA-7F9E-4323-9A1E-5BC5196178C7}" Directory_="APPDIR" Attributes="0" KeyPath="Newtonsoft.Json.dll"/>
+    <ROW Component="Microsoft.Office.Tools.Common.v4.0.Utilities.dll" ComponentId="{BFC3AFC0-D6A4-451F-A2C6-67BFEA61B794}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.Office.Tools.Common.v4.0.Utilities.dll"/>
+    <ROW Component="Newtonsoft.Json.dll" ComponentId="{2BFA0002-59B3-4D69-BB2B-11EFDB786C1B}" Directory_="APPDIR" Attributes="0" KeyPath="Newtonsoft.Json.dll"/>
     <ROW Component="Office" ComponentId="{7CAE5593-087C-4BB5-8CD6-0E32E1FDA4D9}" Directory_="APPDIR" Attributes="4" KeyPath="Office_2"/>
     <ROW Component="ProductInformation" ComponentId="{0E294BB8-2F7E-4ED0-B50C-C8B618F14FF5}" Directory_="APPDIR" Attributes="4" KeyPath="Version"/>
     <ROW Component="WPS" ComponentId="{F3CFB0B9-E4FC-48E2-AC19-A6E18CF45F4D}" Directory_="APPDIR" Attributes="4" KeyPath="WPS"/>
-    <ROW Component="dll" ComponentId="{6794378A-78F7-49FC-BFF1-2B50A82CC18D}" Directory_="APPDIR" Attributes="0" KeyPath="dll"/>
-    <ROW Component="dll.manifest" ComponentId="{52C9310F-803E-44ED-AA1E-341179199DCB}" Directory_="APPDIR" Attributes="0" KeyPath="dll.manifest" Type="0"/>
+    <ROW Component="dll" ComponentId="{EFCDFF03-5892-43B5-9EF0-B2BFA6AC9B1E}" Directory_="APPDIR" Attributes="0" KeyPath="dll"/>
+    <ROW Component="dll.manifest" ComponentId="{52C9310F-803E-44ED-AA1E-341179199DCB}" Directory_="APPDIR" Attributes="0" KeyPath="dotx" Type="0"/>
     <ROW Component="exe" ComponentId="{D1360A88-6878-42D5-8118-0BEEC3DD3632}" Directory_="APPDIR" Attributes="0" KeyPath="exe"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatsComponent">
@@ -58,13 +58,13 @@
     <ATTRIBUTE name="CurrentFeature" value="MainFeature"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFilesComponent">
-    <ROW File="Microsoft.Office.Tools.Common.v4.0.Utilities.dll" Component_="Microsoft.Office.Tools.Common.v4.0.Utilities.dll" FileName="MICROS~1.DLL|Microsoft.Office.Tools.Common.v4.0.Utilities.dll" Attributes="0" SourcePath="bin\Release\Microsoft.Office.Tools.Common.v4.0.Utilities.dll" SelfReg="false"/>
-    <ROW File="Newtonsoft.Json.dll" Component_="Newtonsoft.Json.dll" FileName="NEWTON~1.DLL|Newtonsoft.Json.dll" Attributes="0" SourcePath="bin\Release\Newtonsoft.Json.dll" SelfReg="false"/>
-    <ROW File="dll" Component_="dll" FileName="标准文件形式~1.DLL|标准文件形式检查助手.dll" Attributes="0" SourcePath="bin\Release\标准文件形式检查助手.dll" SelfReg="false"/>
-    <ROW File="dll.manifest" Component_="dll.manifest" FileName="标准文件形式~1.MAN|标准文件形式检查助手.dll.manifest" Attributes="0" SourcePath="bin\Release\标准文件形式检查助手.dll.manifest" SelfReg="false"/>
     <ROW File="dotx" Component_="dll.manifest" FileName="行业标准~1.DOT|行业标准.dotx" Attributes="0" SourcePath="bin\Release\行业标准.dotx" SelfReg="false"/>
     <ROW File="exe" Component_="exe" FileName="更新.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="&lt;AI_STUBS&gt;updater.exe" SelfReg="false" DigSign="true"/>
+    <ROW File="dll.manifest" Component_="dll.manifest" FileName="标准文件形式~1.MAN|标准文件形式检查助手.dll.manifest" Attributes="0" SourcePath="bin\Release\标准文件形式检查助手.dll.manifest" SelfReg="false"/>
     <ROW File="vsto" Component_="dll.manifest" FileName="标准文件形式~1.VST|标准文件形式检查助手.vsto" Attributes="0" SourcePath="bin\Release\标准文件形式检查助手.vsto" SelfReg="false"/>
+    <ROW File="dll" Component_="dll" FileName="标准文件形式~1.DLL|标准文件形式检查助手.dll" Attributes="0" SourcePath="bin\Release\标准文件形式检查助手.dll" SelfReg="false"/>
+    <ROW File="Newtonsoft.Json.dll" Component_="Newtonsoft.Json.dll" FileName="NEWTON~1.DLL|Newtonsoft.Json.dll" Attributes="0" SourcePath="bin\Release\Newtonsoft.Json.dll" SelfReg="false"/>
+    <ROW File="Microsoft.Office.Tools.Common.v4.0.Utilities.dll" Component_="Microsoft.Office.Tools.Common.v4.0.Utilities.dll" FileName="MICROS~1.DLL|Microsoft.Office.Tools.Common.v4.0.Utilities.dll" Attributes="0" SourcePath="bin\Release\Microsoft.Office.Tools.Common.v4.0.Utilities.dll" SelfReg="false"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BootstrOptComponent">
     <ROW BootstrOptKey="GlobalOptions" DownloadFolder="[AppDataFolder][|Manufacturer]\[|ProductName]\prerequisites" Options="2"/>
@@ -86,6 +86,13 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.DynamicPropertyComponent">
     <ROW Property="ProductVersion" Type="0" SourcePath="bin\Release\标准文件形式检查助手.dll"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.FileDependencyComponent">
+    <ROW FilePath="APPDIR\标准文件形式检查助手.dll" File="dll" FileDependency="Newtonsoft.Json.dll"/>
+    <ROW FilePath="APPDIR\标准文件形式检查助手.dll" File="dll" FileDependency="Microsoft.Office.Tools.Common.v4.0.Utilities.dll"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.FileDependencyOptionComponent">
+    <ROW File="dll" Exclude="mscorlib.dll|System.dll|Microsoft.VisualBasic.dll|System.Drawing.dll|System.Windows.Forms.dll|System.Net.Http.dll|System.Numerics.dll|System.Xml.dll|System.Xml.Linq.dll|System.Core.dll|System.Runtime.Serialization.dll|System.Data.dll" Sha1="f5799609c260c5b35a478a0454f7f0bce7774be1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.FragmentComponent">
     <ROW Fragment="CommonUI.aip" Path="&lt;AI_FRAGS&gt;CommonUI.aip"/>
@@ -215,9 +222,6 @@
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatCompsComponent">
     <ROW Feature_="MainFeature" Component_="APPDIR"/>
     <ROW Feature_="MainFeature" Component_="ProductInformation"/>
-    <ROW Feature_="MainFeature" Component_="Microsoft.Office.Tools.Common.v4.0.Utilities.dll"/>
-    <ROW Feature_="MainFeature" Component_="Newtonsoft.Json.dll"/>
-    <ROW Feature_="MainFeature" Component_="dll"/>
     <ROW Feature_="MainFeature" Component_="dll.manifest"/>
     <ROW Feature_="MainFeature" Component_="Description"/>
     <ROW Feature_="MainFeature" Component_="FriendlyName"/>
@@ -231,6 +235,9 @@
     <ROW Feature_="MainFeature" Component_="WPS"/>
     <ROW Feature_="MainFeature" Component_="Manufacturer.ProductName_3"/>
     <ROW Feature_="MainFeature" Component_="exe"/>
+    <ROW Feature_="MainFeature" Component_="dll"/>
+    <ROW Feature_="MainFeature" Component_="Newtonsoft.Json.dll"/>
+    <ROW Feature_="MainFeature" Component_="Microsoft.Office.Tools.Common.v4.0.Utilities.dll"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiIniFileComponent">
     <ROW IniFile="AppDir" FileName="更新.ini" DirProperty="APPDIR" Section="General" Key="AppDir" Value="[APPDIR]" Action="0" Component_="exe"/>

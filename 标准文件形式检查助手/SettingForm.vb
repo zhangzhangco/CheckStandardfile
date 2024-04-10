@@ -1,15 +1,9 @@
-﻿Imports System.Drawing
-Imports System.Net
+﻿Imports System.Diagnostics
+Imports System.IO
 Imports System.Net.Http
-Imports System.Text.RegularExpressions
-Imports System.Threading.Tasks
+Imports System.Reflection
 Imports System.Windows
 Imports System.Windows.Forms
-Imports System.Windows.Forms.VisualStyles
-Imports System.IO
-Imports Application = System.Windows.Forms.Application
-Imports System.Reflection
-Imports System.Diagnostics
 Public Class SettingForm
     Inherits Form
 

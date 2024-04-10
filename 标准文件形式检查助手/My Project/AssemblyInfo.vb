@@ -1,7 +1,5 @@
-﻿Imports System
-Imports System.Reflection
+﻿Imports System.Reflection
 Imports System.Runtime.InteropServices
-Imports System.Security
 
 ' 有关程序集的一般信息由以下
 ' 控制。更改这些特性值可修改
@@ -9,12 +7,12 @@ Imports System.Security
 
 '查看程序集特性的值
 
-<Assembly: AssemblyTitle("标准文件形式检查助手")> 
-<Assembly: AssemblyDescription("")> 
-<Assembly: AssemblyCompany("")> 
-<Assembly: AssemblyProduct("标准文件形式检查助手")> 
-<Assembly: AssemblyCopyright("Copyright ©  2024")> 
-<Assembly: AssemblyTrademark("")> 
+<Assembly: AssemblyTitle("标准文件形式检查助手")>
+<Assembly: AssemblyDescription("")>
+<Assembly: AssemblyCompany("")>
+<Assembly: AssemblyProduct("标准文件形式检查助手")>
+<Assembly: AssemblyCopyright("Copyright ©  2024")>
+<Assembly: AssemblyTrademark("")>
 
 '将 ComVisible 设置为 false 将使此程序集中的类型
 '对 COM 组件不可见。  如果需要从 COM 访问此程序集中的类型，
@@ -35,8 +33,8 @@ Imports System.Security
 ' 方法是按如下所示使用“*”: :
 ' <Assembly: AssemblyVersion("1.0.*")> 
 
-<Assembly: AssemblyVersion("0.5.1")>
-<Assembly: AssemblyFileVersion("0.5.1")>
+<Assembly: AssemblyVersion("0.5.4")>
+<Assembly: AssemblyFileVersion("0.5.4")>
 
 Friend Module DesignTimeConstants
     Public Const RibbonTypeSerializer As String = "Microsoft.VisualStudio.Tools.Office.Ribbon.Serialization.RibbonTypeCodeDomSerializer, Microsoft.VisualStudio.Tools.Office.Designer, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"

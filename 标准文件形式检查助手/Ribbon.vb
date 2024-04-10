@@ -15,29 +15,17 @@
 
 '有关详细信息，请参见 Visual Studio Tools for Office 帮助中的功能区 XML 文档。
 
-Imports Microsoft.Office.Core
-Imports stdole
-Imports System.Drawing
+Imports System.IO
+Imports System.Net
 Imports System.Net.Http
-Imports System.Windows.Forms
 Imports System.Reflection
 Imports System.Text.RegularExpressions
-Imports System.Windows.Controls
+Imports System.Windows.Forms
+Imports Microsoft.Office.Core
 Imports Microsoft.Office.Interop.Word
-Imports Microsoft.Office.Tools.Ribbon
-Imports System.Threading.Tasks
-Imports Application = Microsoft.Office.Interop.Word.Application
-Imports System.Net
-Imports System.Security.Cryptography.X509Certificates
-Imports Newtonsoft.Json.Linq
-Imports System.Net.Security
-Imports Microsoft.Office
-Imports System.Diagnostics.Eventing.Reader
-Imports System.IO
-Imports System.Security.Cryptography
-Imports Newtonsoft.Json
-Imports System.Windows.Input
 Imports Microsoft.Win32
+Imports Newtonsoft.Json
+Imports Application = Microsoft.Office.Interop.Word.Application
 
 <Runtime.InteropServices.ComVisible(True)>
 Public Class Ribbon
@@ -114,7 +102,7 @@ Public Class Ribbon
     End Function
     Public Sub About_Click(ByVal control As IRibbonControl)
         Dim aboutMessage As String = "形式检查助手" & Environment.NewLine
-        aboutMessage &= "版本: 0.5.1" & Environment.NewLine
+        aboutMessage &= "版本: 0.5.4" & Environment.NewLine
         aboutMessage &= "WeChat：HelloLLM2035" & Environment.NewLine
         aboutMessage &= "用于辅助进行标准形式检查和编制的小工具。"
 
@@ -2170,7 +2158,8 @@ NextParagraphDangling:
         If File.Exists(filePath) Then
             Dim lines As String() = File.ReadAllLines(filePath)
             For Each line In lines
-                Dim parts As String() = line.Split("="c)
+                ' 限制Split操作只分割一次，以确保可以正确处理包含等号的值
+                Dim parts As String() = line.Split(New Char() {"="c}, 2)
                 If parts.Length = 2 Then
                     Select Case parts(0).Trim().ToLower()
                         Case "licensekey"
@@ -2179,8 +2168,10 @@ NextParagraphDangling:
                             Llm = parts(1).Trim()
                         Case "llmkey"
                             LlmKey = parts(1).Trim()
+                            Console.WriteLine("Found llmkey") ' 添加输出语句
                         Case "llmtoken"
                             LlmToken = parts(1).Trim()
+                            Console.WriteLine("Found llmtoken") ' 添加输出语句
                     End Select
                 End If
             Next
@@ -2256,7 +2247,7 @@ NextParagraphDangling:
                 MessageBox.Show("请先选择一段文本。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             End If
         Catch ex As Exception
-            MessageBox.Show("操作时发生错误：" & ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            'MessageBox.Show("操作时发生错误：" & ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
 

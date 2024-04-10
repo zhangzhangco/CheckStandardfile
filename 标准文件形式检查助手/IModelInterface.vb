@@ -1,5 +1,4 @@
-﻿Imports System.Threading.Tasks
-
+﻿
 Public Interface IModelInterface
     Function SendToLLM(prompt As String, apiToken As String) As String
     Function TestApiKey(config As ModelConfig) As Boolean

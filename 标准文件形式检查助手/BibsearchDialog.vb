@@ -1,13 +1,7 @@
-﻿Imports System.Drawing
-Imports System.Net
+﻿Imports System.Net
 Imports System.Net.Http
 Imports System.Text.RegularExpressions
-Imports System.Threading.Tasks
-Imports System.Windows
 Imports System.Windows.Forms
-Imports System.Windows.Forms.VisualStyles
-Imports Microsoft.Office.Interop.Word
-Imports Newtonsoft.Json.Linq
 Imports Clipboard = System.Windows.Forms.Clipboard
 Imports MessageBox = System.Windows.Forms.MessageBox
 

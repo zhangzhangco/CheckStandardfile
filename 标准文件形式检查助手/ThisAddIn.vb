@@ -1,5 +1,4 @@
 ﻿Imports System.Threading
-Imports Microsoft.Office.Core
 Public Class ThisAddIn
 
     Public Shared UISynchronizationContext As SynchronizationContext
